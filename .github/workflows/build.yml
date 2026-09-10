@@ -16,7 +16,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - - name: Install Dependencies
+    - name: Install Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev lld libltdl-dev
