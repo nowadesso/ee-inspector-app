@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
+    # Set environment variables globally so all steps can see them
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      PATH: /opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:$PATH
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -22,15 +27,11 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev lld libltdl-dev
         pip install buildozer cython
         
-        # Install Android Command Line Tools and accept licenses
+        # Install Android Command Line Tools
         mkdir -p /opt/android-sdk/cmdline-tools
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O /tmp/cmdline-tools.zip
         unzip -q /tmp/cmdline-tools.zip -d /opt/android-sdk/cmdline-tools
         mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
-        
-        # Set ANDROID_HOME environment variable
-        export ANDROID_HOME=/opt/android-sdk
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
         
         # Accept licenses
         yes | sdkmanager --licenses > /dev/null 2>&1
