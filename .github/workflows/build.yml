@@ -43,7 +43,9 @@ jobs:
         echo "/opt/android-sdk/platform-tools" >> $GITHUB_PATH
         echo "ANDROID_HOME=/opt/android-sdk" >> $GITHUB_ENV
         
-        # Accept licenses
+        # Accept licenses     
+        # Install the required Android platform (THIS IS THE FIX)
+        yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0" > /dev/null 2>&1
         yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
 
     - name: Build APK
