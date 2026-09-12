@@ -11,8 +11,10 @@ requirements = python3,kivymd,requests,opencv
 android.permissions = INTERNET,CAMERA,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
 orientation = portrait
 fullscreen = 1
+android.archs = arm64-v8a
 android.minapi = 24
 android.accept_sdk_license = 1
+p4a.local_recipes = ./recipes 
 log_level = 2
 warn_on_root = 1
 
