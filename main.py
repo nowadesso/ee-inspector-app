@@ -1,5 +1,3 @@
-import time
-time.sleep(2) # Give Android 2 seconds to initialize the display before loading KivyMD
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'modules'))
