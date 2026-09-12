@@ -6,10 +6,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 120 # Set a longer timeout
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    # Cache the .buildozer directory to speed up subsequent builds
+    - name: Cache Buildozer Dependencies
+      uses: actions/cache@v4
+      with:
+        path: .buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -43,6 +53,6 @@ jobs:
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
-      with:
+      with:            
         name: android-apk
         path: bin/*.apk
