@@ -31,21 +31,18 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev lld libltdl-dev
         pip install buildozer cython
 
+    # ─────────────────────────────────────────────────────────
+    #  Clears ONLY the SDK folder so Buildozer redownloads it
+    #  fresh. The rest of the cache (compiled recipes) is kept.
+    # ─────────────────────────────────────────────────────────
+    - name: Clear Buildozer SDK
+      run: |
+        rm -rf $HOME/.buildozer/android/platform/android-sdk
+
     - name: Build APK
       run: |
         export BUILDOZER_WARN_ON_ROOT=1
-        
-        # First, trigger Buildozer to download its SDK/NDK
-        # This will fail, but it downloads everything we need first
-        buildozer android debug --verbose || true
-        
-        # Now install the required platform into Buildozer's SDK
-        yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0" > /dev/null 2>&1 || \
-        yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0" > /dev/null 2>&1
-        
-        # Now run the actual build
         buildozer android debug --verbose
-        
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
