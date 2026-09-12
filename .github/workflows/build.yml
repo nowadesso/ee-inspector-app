@@ -6,14 +6,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120 # Set a longer timeout
+    timeout-minutes: 120
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Cache the .buildozer directory to speed up subsequent builds
-    - name: Cache Buildozer Dependencies
+    - name: Cache Buildozer
       uses: actions/cache@v4
       with:
         path: .buildozer
@@ -26,27 +25,11 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Dependencies and Android SDK
+    - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev lld libltdl-dev
         pip install buildozer cython
-        
-        # Install Android Command Line Tools
-        mkdir -p /opt/android-sdk/cmdline-tools
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O /tmp/cmdline-tools.zip
-        unzip -q /tmp/cmdline-tools.zip -d /opt/android-sdk/cmdline-tools
-        mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
-        
-        # Append Android paths to the system PATH for this step
-        echo "/opt/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "/opt/android-sdk/platform-tools" >> $GITHUB_PATH
-        echo "ANDROID_HOME=/opt/android-sdk" >> $GITHUB_ENV
-        
-        # Accept licenses     
-        # Install the required Android platform (THIS IS THE FIX)
-        yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0" > /dev/null 2>&1
-        yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
 
     - name: Build APK
       run: |
