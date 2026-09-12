@@ -7,7 +7,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 source.include_dirs = 
 version = 0.1
-requirements = python3,kivymd,requests,opencv
+requirements = python3,kivymd,requests,numpy==1.26.5,opencv
 android.permissions = INTERNET,CAMERA,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
 orientation = portrait
 fullscreen = 1
