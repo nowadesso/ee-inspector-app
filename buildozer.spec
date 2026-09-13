@@ -28,7 +28,7 @@ android.permissions = INTERNET,CAMERA,BLUETOOTH_SCAN,BLUETOOTH_CONNECT
 # (int) Target Android API, should be as high as possible.
 android.api = 33
 # (int) Min API your APK will support.
-android.minapi = 33
+android.minapi = 24
 # (int) Android NDK API to use. This is the most important setting, it should match the
 # *ndk version used by *p4a, which is 28c by default.
 # (This is the NDK version bundled with the p4a toolchain)
