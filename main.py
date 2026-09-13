@@ -36,7 +36,7 @@ class CloudOrLocalCalculator:
             return {"ee_score": round(ee_final, 2), "rating": rating, "suggested_price": None, "premium": None, "source": "Offline"}
 
 # --- MAIN APP UI ---
- class ProfessionalEEMonitorApp(MDApp):
+class ProfessionalEEMonitorApp(MDApp):
     def build(self):
         # 1. ASK FOR PERMISSIONS FIRST (Prevents Android from killing the app)
         try:
