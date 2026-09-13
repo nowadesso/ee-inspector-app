@@ -87,7 +87,7 @@ warn_on_root = 1
 build_dir = .buildozer
 # (str) Path to the bin directory (working directory for binary generation)
 bin_dir = bin
-
+requirements = hostpython3,hostpip3,clang,libc6-dev,libffi-dev,libssl-dev
 [buildozer_mode]
 
 # (bool) If set to True, Buildozer will not ask for confirmation before deleting the .buildozer folder
