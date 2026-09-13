@@ -1,0 +1,82 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache Buildozer
+      uses: actions/cache@v4
+      with:
+        path: .buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Dependencies and Android SDK
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev lld libltdl-dev
+        pip install buildozer cython
+        
+        # Install Android Command Line Tools
+        mkdir -p /opt/android-sdk/cmdline-tools
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O /tmp/cmdline-tools.zip
+        unzip -q /tmp/cmdline-tools.zip -d /opt/android-sdk/cmdline-tools
+        mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
+        
+        # Append Android paths to the system PATH for future steps
+        echo "/opt/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "/opt/android-sdk/platform-tools" >> $GITHUB_PATH
+        echo "ANDROID_HOME=/opt/android-sdk" >> $GITHUB_ENV
+        
+        # Accept licenses (Using FULL PATH so it works immediately)
+        yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
+        
+        # INSTALL ANDROID API 33 AND BUILD TOOLS (Using FULL PATH)
+        /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0"
+
+      # ─────────────────────────────────────────────────────────
+    #  Clears ONLY the SDK folder so Buildozer redownloads it
+    #  fresh. The rest of the cache (compiled recipes) is kept.
+    # ─────────────────────────────────────────────────────────
+    - name: Build APK
+      run: |
+        export BUILDOZER_WARN_ON_ROOT=1
+        
+        # 1. PRE-CREATE Buildozer's hidden Android SDK folder
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools
+        
+        # 2. Download the Android SDK directly into Buildozer's folder
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O /tmp/cmdline-tools.zip
+        unzip -q /tmp/cmdline-tools.zip -d /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools
+        mv /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest
+        
+        # 3. CREATE THE SYM LINK SO BUILDOZER CAN FIND SDKMANAGER
+        ln -s /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest /home/runner/.buildozer/android/platform/android-sdk/tools
+        
+        # 4. Accept licenses and INSTALL API 33
+        yes | /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
+        /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0"
+        
+        # 5. Now run Buildozer with DEBUG mode for maximum detail
+        buildozer android debug --verbose --debug   
+        
+       
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:            
+        name: android-apk
+        path: bin/*.apk
