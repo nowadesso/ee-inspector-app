@@ -16,7 +16,7 @@ source.include_dirs =
 version = 0.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd,requests,numpy,opencv,opencv_extras
+requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.1,https://github.com/kivymd/KivyMD/archive/refs/tags/2.0.0.zip,materialyoucolor==3.0.3,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras
 orientation = portrait
 osx.python_version = 3
 fullscreen = 0
@@ -68,7 +68,7 @@ android.project_dir = .buildozer/android/project
 # (bool) If True, then skip running the ndk_build
 # android.skip_ndk_build = False
 # (str) python-for-android branch to use, choices: master, develop
-# p4a.branch = master
+p4a.branch = master
 # (str) python-for-android specific commit
 # p4a.commit = HEAD
 # (str) python-for-android git clone directory (if empty, it will be cloned from github)
@@ -89,7 +89,6 @@ warn_on_root = 1
 build_dir = .buildozer
 # (str) Path to the bin directory (working directory for binary generation)
 bin_dir = bin
-requirements = hostpython3,hostpip3,clang,libc6-dev,libffi-dev,libssl-dev
 [buildozer_mode]
 
 # (bool) If set to True, Buildozer will not ask for confirmation before deleting the .buildozer folder
