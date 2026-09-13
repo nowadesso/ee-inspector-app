@@ -1,0 +1,12 @@
+diff --git a/cmake/OpenCVDetectPython.cmake b/cmake/OpenCVDetectPython.cmake
+--- a/cmake/OpenCVDetectPython.cmake
++++ b/cmake/OpenCVDetectPython.cmake
+@@ -175,7 +175,7 @@
+-    if(NOT ANDROID AND NOT IOS AND NOT XROS)
++    if(P4A OR NOT ANDROID AND NOT IOS AND NOT XROS)
+diff --git a/modules/python/CMakeLists.txt b/modules/python/CMakeLists.txt
+--- a/modules/python/CMakeLists.txt
++++ b/modules/python/CMakeLists.txt
+@@ -3,7 +3,7 @@
+-if(ANDROID OR APPLE_FRAMEWORK OR WINRT)
++if(ANDROID AND NOT P4A OR APPLE_FRAMEWORK OR WINRT)
