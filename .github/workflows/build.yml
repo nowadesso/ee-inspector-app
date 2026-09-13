@@ -55,10 +55,20 @@ jobs:
     - name: Clear Buildozer SDK
       run: |
         rm -rf $HOME/.buildozer/android/platform/android-sdk
-
+      
     - name: Build APK
       run: |
         export BUILDOZER_WARN_ON_ROOT=1
+        
+        # 1. Initialize Buildozer (This downloads the SDK to the hidden folder)
+        buildozer android debug || true
+        
+        # 2. Now that Buildozer downloaded its SDK, INJECT API 33 into it!
+        echo "Installing Android API 33 into Buildozer's SDK..."
+        yes | /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
+        /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0"
+        
+        # 3. Run the actual build again. This time it will find API 33!
         buildozer android debug --verbose
 
     - name: Upload APK
