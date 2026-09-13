@@ -16,7 +16,8 @@ source.include_dirs =
 version = 0.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd,requests,numpy,opencv-python-headless
+requirements = python3,kivy,kivymd,requests,opencv-python-headless
+#requirements = python3,kivy,kivymd,requests,numpy,opencv-python-headless
 #requirements = kivymd==2.1.0, kivy, opencv-python-headless, numpy, Pillow
 #requirements = python3,kivymd,requests,numpy,opencv
 # (str) Custom source folders for requirements
