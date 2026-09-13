@@ -36,8 +36,16 @@ class CloudOrLocalCalculator:
             return {"ee_score": round(ee_final, 2), "rating": rating, "suggested_price": None, "premium": None, "source": "Offline"}
 
 # --- MAIN APP UI ---
-class ProfessionalEEMonitorApp(MDApp):
+ class ProfessionalEEMonitorApp(MDApp):
     def build(self):
+        # 1. ASK FOR PERMISSIONS FIRST (Prevents Android from killing the app)
+        try:
+            from android.permissions import request_permissions, Permission
+            request_permissions([Permission.INTERNET, Permission.CAMERA, Permission.BLUETOOTH_SCAN, Permission.BLUETOOTH_CONNECT])
+        except Exception:
+            pass # If it fails (e.g., running on PC), just ignore and keep going
+
+        # 2. NOW LOAD THE UI
         self.theme_cls.primary_palette = "Blue"
         self.theme_cls.theme_style = "Dark"
         screen = MDScreen()
@@ -45,6 +53,8 @@ class ProfessionalEEMonitorApp(MDApp):
         
         title = MDLabel(text="EE Inspector Pro", halign="center", font_style="H4", size_hint_y=0.08)
         main_layout.add_widget(title)
+        
+        # ... (KEEP THE REST OF YOUR UI CODE EXACTLY THE SAME) ...
         
         input_card = MDCard(orientation='vertical', padding=dp(20), spacing=dp(10), size_hint_y=0.25, elevation=2, radius=[dp(15)])
         self.area_input = MDTextField(hint_text="Apartment Area (m2)", input_filter="int", text="80")
