@@ -56,7 +56,7 @@ jobs:
       run: |
         rm -rf $HOME/.buildozer/android/platform/android-sdk
 
-        - name: Build APK
+    - name: Build APK
       run: |
         export BUILDOZER_WARN_ON_ROOT=1
         
@@ -76,8 +76,7 @@ jobs:
         /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0"
         
         # 5. Now run Buildozer with DEBUG mode for maximum detail
-        buildozer android debug --verbose --debug
-   
+        buildozer android debug --verbose --debug   
         
        
     - name: Upload APK
