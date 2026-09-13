@@ -55,22 +55,26 @@ jobs:
     - name: Clear Buildozer SDK
       run: |
         rm -rf $HOME/.buildozer/android/platform/android-sdk
-      
+
     - name: Build APK
       run: |
         export BUILDOZER_WARN_ON_ROOT=1
         
-        # 1. Initialize Buildozer (This downloads the SDK to the hidden folder)
-        buildozer android debug || true
+        # 1. PRE-CREATE Buildozer's hidden Android SDK folder
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools
         
-        # 2. Now that Buildozer downloaded its SDK, INJECT API 33 into it!
-        echo "Installing Android API 33 into Buildozer's SDK..."
+        # 2. Download the Android SDK directly into Buildozer's folder
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O /tmp/cmdline-tools.zip
+        unzip -q /tmp/cmdline-tools.zip -d /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools
+        mv /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest
+        
+        # 3. Accept licenses and INSTALL API 33
         yes | /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
         /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0"
         
-        # 3. Run the actual build again. This time it will find API 33!
+        # 4. Now run Buildozer. It will find the SDK and API 33 already installed!
         buildozer android debug --verbose
-
+      
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:            
