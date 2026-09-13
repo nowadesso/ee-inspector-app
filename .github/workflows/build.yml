@@ -52,10 +52,6 @@ jobs:
     #  Clears ONLY the SDK folder so Buildozer redownloads it
     #  fresh. The rest of the cache (compiled recipes) is kept.
     # ─────────────────────────────────────────────────────────
-    - name: Clear Buildozer SDK
-      run: |
-        rm -rf $HOME/.buildozer/android/platform/android-sdk
-
     - name: Build APK
       run: |
         export BUILDOZER_WARN_ON_ROOT=1
