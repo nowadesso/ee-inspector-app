@@ -1,13 +1,13 @@
 --- a/Modules/grpmodule.c
 +++ b/Modules/grpmodule.c
-@@ -278,21 +278,10 @@ grp_getgrall_impl(PyModuleDef *module)
-         return NULL;
- 
+@@ -259,18 +259,9 @@
+     PyObject *d;
+     struct group *p;
      if ((d = PyList_New(0)) == NULL)
          return NULL;
 -    setgrent();
 -    while ((p = getgrent()) != NULL) {
--        PyObject *v = mkgrent(p);
+-        PyObject *v = mkgrent(module, p);
 -        if (v == NULL || PyList_Append(d, v) != 0) {
 -            Py_XDECREF(v);
 -            Py_DECREF(d);
