@@ -1,6 +1,6 @@
 --- a/Modules/grpmodule.c
 +++ b/Modules/grpmodule.c
-@@ -259,18 +259,8 @@
+@@ -259,15 +259,5 @@
      PyObject *d;
      struct group *p;
      if ((d = PyList_New(0)) == NULL)
