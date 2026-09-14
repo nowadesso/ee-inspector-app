@@ -49,22 +49,14 @@ jobs:
       - name: Verify local recipes
         run: |
           echo "===== LOCAL RECIPES ====="
-          find recipes -maxdepth 3 -type f -print
-          echo "===== PYTHON RECIPE CHECK ====="
-          if [ -d recipes/python3 ]; then
-            echo "ERROR: recipes/python3 still exists"
-            exit 1
-          else
-            echo "OK: custom python3 recipe removed"
-          fi
-          echo "===== OPENCV RECIPE CHECK ====="
-          test -f recipes/opencv/__init__.py
-          test -f recipes/opencv/patches/p4a_build.patch
-          test -f recipes/opencv_extras/__init__.py
-          echo "OK: OpenCV and OpenCV Contrib recipes present"
+          find recipes -type f -print
 
-      - name: Verify Python grp patch
-        run: |
+          echo "===== PYTHON RECIPE CHECK ====="
+          test -f recipes/python3/__init__.py
+          test -f recipes/python3/patches/disable_grp.patch
+          echo "Python3 local recipe: OK"
+          echo "Python3 grp patch: OK"
+
           echo "===== PYTHON RECIPE ====="
           cat recipes/python3/__init__.py
 
@@ -73,6 +65,12 @@ jobs:
 
           echo "===== OPENCV RECIPES ====="
           find recipes/opencv recipes/opencv_extras -maxdepth 3 -type f -print
+
+          echo "===== OPENCV RECIPE CHECK ====="
+          test -f recipes/opencv/__init__.py
+          test -f recipes/opencv/patches/p4a_build.patch
+          test -f recipes/opencv_extras/__init__.py
+          echo "OpenCV + OpenCV Contrib local recipes: OK"
 
       - name: Build APK
         env:
