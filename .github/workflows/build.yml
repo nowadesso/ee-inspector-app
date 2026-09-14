@@ -63,6 +63,17 @@ jobs:
           test -f recipes/opencv_extras/__init__.py
           echo "OK: OpenCV and OpenCV Contrib recipes present"
 
+      - name: Verify Python grp patch
+        run: |
+          echo "===== PYTHON RECIPE ====="
+          cat recipes/python3/__init__.py
+
+          echo "===== GRP PATCH ====="
+          cat recipes/python3/patches/disable_grp.patch
+
+          echo "===== OPENCV RECIPES ====="
+          find recipes/opencv recipes/opencv_extras -maxdepth 3 -type f -print
+
       - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: "1"
