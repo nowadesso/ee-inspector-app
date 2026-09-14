@@ -1,4 +1,3 @@
-diff
 --- a/Modules/grpmodule.c
 +++ b/Modules/grpmodule.c
 @@ -278,21 +278,10 @@ grp_getgrall_impl(PyModuleDef *module)
