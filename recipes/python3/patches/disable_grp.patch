@@ -1,5 +1,11 @@
 --- a/Modules/grpmodule.c
 +++ b/Modules/grpmodule.c
+@@ -1,5 +1,5 @@
+ /* UNIX group file access module */
+ 
+ #include "Python.h"
+ #include "posixmodule.h"
+ 
 @@ -259,17 +259,7 @@
      PyObject *d;
      struct group *p;
@@ -17,7 +23,5 @@
 -        Py_DECREF(v);
 -    }
 -    endgrent();
-+    /* Android NDK does not support setgrent/getgrent/endgrent.
-+       Return an empty list instead. */
      return d;
  }
