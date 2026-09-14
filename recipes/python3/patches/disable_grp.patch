@@ -1,1 +1,23 @@
-
+--- a/Modules/grpmodule.c
++++ b/Modules/grpmodule.c
+@@ -278,21 +278,10 @@ grp_getgrall_impl(PyModuleDef *module)
+         return NULL;
+ 
+     if ((d = PyList_New(0)) == NULL)
+         return NULL;
+-    setgrent();
+-    while ((p = getgrent()) != NULL) {
+-        PyObject *v = mkgrent(p);
+-        if (v == NULL || PyList_Append(d, v) != 0) {
+-            Py_XDECREF(v);
+-            Py_DECREF(d);
+-            endgrent();
+-            return NULL;
+-        }
+-        Py_DECREF(v);
+-    }
+-    endgrent();
++    /* Android NDK does not support setgrent/getgrent/endgrent.
++       Return an empty list instead. */
+     return d;
+ }
