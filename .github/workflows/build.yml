@@ -35,9 +35,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-buildozer-v3-${{ hashFiles('buildozer.spec', 'recipes/**', '.github/workflows/build.yml') }}
+          key: ${{ runner.os }}-buildozer-v4-${{ hashFiles('buildozer.spec', 'recipes/**', '.github/workflows/build.yml') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-v3-
+            ${{ runner.os }}-buildozer-v4-
 
       - name: Clean stale build state
         run: |
@@ -45,6 +45,23 @@ jobs:
           rm -rf .buildozer/android/platform/python-for-android
           rm -rf .buildozer/android/platform/build/dists
           mkdir -p bin
+
+      - name: Verify local recipes
+        run: |
+          echo "===== LOCAL RECIPES ====="
+          find recipes -maxdepth 3 -type f -print
+          echo "===== PYTHON RECIPE CHECK ====="
+          if [ -d recipes/python3 ]; then
+            echo "ERROR: recipes/python3 still exists"
+            exit 1
+          else
+            echo "OK: custom python3 recipe removed"
+          fi
+          echo "===== OPENCV RECIPE CHECK ====="
+          test -f recipes/opencv/__init__.py
+          test -f recipes/opencv/patches/p4a_build.patch
+          test -f recipes/opencv_extras/__init__.py
+          echo "OK: OpenCV and OpenCV Contrib recipes present"
 
       - name: Build APK
         env:
