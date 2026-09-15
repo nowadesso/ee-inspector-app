@@ -73,7 +73,7 @@ p4a.branch = master
 # (str) python-for-android specific commit
 # p4a.commit = HEAD
 # (str) python-for-android git clone directory (if empty, it will be cloned from github)
-# p4a.source_dir =
+p4a.source_dir =.buildozer/android/platform/python-for-android
 # (list) requirements to include, for more information see
 #            https://github.com/kivy/python-for-android/blob/master/README.requirements.rst
 # p4a.requirements = python3,kivy,sqlite3,pyjnius,openssl,android
