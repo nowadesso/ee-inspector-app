@@ -176,6 +176,3 @@ jobs:
         with:
           name: android-apk
           path: bin/*.apk
-```
-
-This should allow the **official p4a Python 3 recipe** to build Python 3.12.10 while applying the Android `grp` workaround, without replacing the official recipe or removing OpenCV/Contrib.
