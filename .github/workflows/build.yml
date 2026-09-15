@@ -1,4 +1,3 @@
-```yaml
 name: Build Android APK
 
 on:
@@ -299,4 +298,3 @@ jobs:
         with:
           name: android-apk
           path: bin/*.apk
-```
