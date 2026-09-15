@@ -72,12 +72,28 @@ jobs:
           test -f recipes/opencv_extras/__init__.py
           echo "OpenCV + OpenCV Contrib local recipes: OK"
 
+      - name: Inspect Python source before build
+        run: |
+          echo "===== PATCH FILE WITH LINE NUMBERS ====="
+          nl -ba recipes/python3/patches/disable_grp.patch
+
+          echo "===== SEARCHING FOR grpmodule.c ====="
+          find .buildozer/android/platform/build-arm64-v8a/build/other_builds/python3 \
+            -path '*/Modules/grpmodule.c' \
+            -print
+
+          echo "===== GRP SOURCE ====="
+          find .buildozer/android/platform/build-arm64-v8a/build/other_builds/python3 \
+            -path '*/Modules/grpmodule.c' \
+            -exec sh -c 'echo "===== FILE: $1 ====="; sed -n "230,310p" "$1"' _ {} \;
+
       - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: "1"
         run: |
           buildozer android debug --verbose
 
+      
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
