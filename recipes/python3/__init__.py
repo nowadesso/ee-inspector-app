@@ -12,7 +12,7 @@ class Python3Recipe(TargetPythonRecipe):
         "libffi",
     ]
 
-    patches = []
+    patches = ["patches/disable_grp.patch"]
 
     def include_root(self, arch_name):
         from os.path import join
