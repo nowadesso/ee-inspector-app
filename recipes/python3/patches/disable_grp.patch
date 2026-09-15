@@ -1,6 +1,6 @@
 --- a/Modules/grpmodule.c
 +++ b/Modules/grpmodule.c
-@@ -258,19 +258,7 @@
+@@ -258,18 +258,7 @@
  {
      PyObject *d;
      struct group *p;
