@@ -1,3 +1,4 @@
+import os
 from multiprocessing import cpu_count
 from os.path import join
 
@@ -171,16 +172,18 @@ class OpenCVRecipe(NDKRecipe):
                 f'link.txt'
             )
 
-            if py_major == '3' and not sh.test('-f', link_txt):
-                print(
-                    'EE Inspector Pro: OpenCV Python binding '
-                    'link.txt was not generated.'
-                )
-                print(
-                    'EE Inspector Pro: Continuing with native '
-                    'OpenCV libraries.'
-                )
+            if py_major == '3' and not os.path.isfile(link_txt):
+               print(
+                   'EE Inspector Pro: OpenCV Python binding '
+                   'link.txt was not generated.'
+              )
+              print(
+                   'EE Inspector Pro: Continuing with native '
+                   'OpenCV libraries.'
+              )
             else:
+
+            
                 with open(link_txt, 'r+') as f:
                     content = f.read().replace(
                         '-version',
