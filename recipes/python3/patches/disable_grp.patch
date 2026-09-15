@@ -1,13 +1,11 @@
 --- a/Modules/grpmodule.c
 +++ b/Modules/grpmodule.c
-@@ -275,25 +275,6 @@
- static PyObject *
- grp_getgrall_impl(PyObject *module)
+@@ -258,19 +258,7 @@
  {
--    PyObject *d;
--    struct group *p;
--    if ((d = PyList_New(0)) == NULL)
--        return NULL;
+     PyObject *d;
+     struct group *p;
+     if ((d = PyList_New(0)) == NULL)
+         return NULL;
 -    setgrent();
 -    while ((p = getgrent()) != NULL) {
 -        PyObject *v = mkgrent(module, p);
@@ -20,6 +18,5 @@
 -        Py_DECREF(v);
 -    }
 -    endgrent();
--    return d;
-+    return PyList_New(0);
+     return d;
  }
