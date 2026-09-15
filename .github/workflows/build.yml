@@ -299,17 +299,6 @@ jobs:
 
           cat \
             "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
-
-
-      # ---------------------------------------------------------
-      # 10. Verify libtool / libltdl
-      #
-      # This is specifically for the current libffi failure:
-      #
-      # configure.ac:215:
-      # error: possibly undefined macro: LT_SYS_SYMBOL_USCORE
-      # ---------------------------------------------------------
-      
       # ---------------------------------------------------------
       # 11. Show important Buildozer configuration
       # ---------------------------------------------------------
