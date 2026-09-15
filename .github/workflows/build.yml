@@ -20,7 +20,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 2. Set up Python
+      # 2. Set up host Python
       # ---------------------------------------------------------
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -33,6 +33,8 @@ jobs:
       # ---------------------------------------------------------
       - name: Install system dependencies
         run: |
+          set -e
+
           sudo apt-get update
 
           sudo apt-get install -y \
@@ -65,6 +67,8 @@ jobs:
       # ---------------------------------------------------------
       - name: Install Python build tools
         run: |
+          set -e
+
           python -m pip install --upgrade pip setuptools wheel
 
           python -m pip install \
@@ -86,11 +90,14 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 6. Remove stale python-for-android
+      # 6. Remove stale python-for-android checkout
       # ---------------------------------------------------------
       - name: Remove stale python-for-android
         run: |
-          rm -rf "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          set -e
+
+          rm -rf \
+            "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
 
 
       # ---------------------------------------------------------
@@ -98,17 +105,22 @@ jobs:
       # ---------------------------------------------------------
       - name: Prepare python-for-android
         run: |
+          set -e
+
+          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+
           mkdir -p "$GITHUB_WORKSPACE/.buildozer/android/platform"
 
           git clone \
             --depth 1 \
             --branch v2026.05.09 \
             https://github.com/kivy/python-for-android.git \
-            "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+            "$P4A_DIR"
 
+          echo
           echo "===== python-for-android version ====="
 
-          cd "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          cd "$P4A_DIR"
 
           git describe --tags --always || true
 
@@ -117,12 +129,12 @@ jobs:
       # 8. Prepare official Python recipe
       #
       # IMPORTANT:
-      # We DO NOT replace the official p4a python3 recipe.
+      # We DO NOT use disable_grp.patch anymore.
       #
-      # We also DO NOT use disable_grp.patch.
-      #
-      # Instead, we inject a small source modification directly
-      # into the official recipe's build_arch() function.
+      # We keep the official p4a Python recipe untouched except
+      # for one small helper which removes the Android-incompatible
+      # setgrent/getgrent/endgrent block immediately before CPython
+      # compilation.
       # ---------------------------------------------------------
       - name: Prepare Python recipe
         shell: bash
@@ -130,70 +142,27 @@ jobs:
           set -e
 
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
           P4A_PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
+          LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
 
-          echo "===== Paths ====="
-          echo "P4A_DIR=$P4A_DIR"
-          echo "LOCAL_PYTHON_RECIPE=$LOCAL_PYTHON_RECIPE"
-          echo "P4A_PYTHON_RECIPE=$P4A_PYTHON_RECIPE"
+          echo "===== P4A directory ====="
+          echo "$P4A_DIR"
 
-
-          # -------------------------------------------------------
-          # Verify official p4a Python recipe exists
-          # -------------------------------------------------------
           echo
-          echo "===== Checking official Python recipe ====="
+          echo "===== Official Python recipe ====="
+          echo "$P4A_PYTHON_RECIPE"
 
           test -f "$P4A_PYTHON_RECIPE/__init__.py"
 
-          echo "OK: official Python recipe found."
+          echo "OK: official Python recipe exists."
 
 
-          # -------------------------------------------------------
-          # Make sure local python3 recipe directory exists
-          # -------------------------------------------------------
-          mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
+          # -----------------------------------------------------
+          # Make sure we never use the old custom grp patch
+          # -----------------------------------------------------
 
-
-          # -------------------------------------------------------
-          # IMPORTANT:
-          # Delete any local python3/__init__.py.
-          #
-          # The official p4a recipe must remain in control.
-          # -------------------------------------------------------
-          if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
-            echo "Removing local recipes/python3/__init__.py"
-            rm -f "$LOCAL_PYTHON_RECIPE/__init__.py"
-          fi
-
-          echo "OK: local recipes/python3/__init__.py is absent."
-
-
-          # -------------------------------------------------------
-          # Copy official p4a Python patches to local recipe area.
-          #
-          # This keeps the official Python patches available to
-          # the local recipe system.
-          # -------------------------------------------------------
           echo
-          echo "===== Copying official Python patches ====="
-
-          cp \
-            "$P4A_PYTHON_RECIPE/patches/"* \
-            "$LOCAL_PYTHON_RECIPE/patches/"
-
-          echo "Official Python patches copied."
-
-
-          # -------------------------------------------------------
-          # IMPORTANT:
-          # Remove the old disable_grp.patch if it exists.
-          #
-          # We are NOT using a patch file for grp anymore.
-          # -------------------------------------------------------
-          echo
-          echo "===== Removing old grp patch ====="
+          echo "===== Removing old disable_grp.patch from local recipe ====="
 
           rm -f \
             "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
@@ -201,14 +170,51 @@ jobs:
           rm -f \
             "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
 
-          echo "OK: old disable_grp.patch removed."
 
+          # -----------------------------------------------------
+          # Make sure local python3 recipe has NO __init__.py
+          # -----------------------------------------------------
 
-          # -------------------------------------------------------
-          # Inject direct grpmodule.c fix into official p4a recipe.
-          # -------------------------------------------------------
           echo
-          echo "===== Installing ANDROID_GRP_FIX ====="
+          echo "===== Checking local python3 recipe ====="
+
+          if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
+            echo "ERROR:"
+            echo "recipes/python3/__init__.py must NOT exist."
+            exit 1
+          fi
+
+          echo "OK: local recipes/python3/__init__.py is absent."
+
+
+          # -----------------------------------------------------
+          # Copy official p4a patches into local recipe directory
+          # -----------------------------------------------------
+
+          echo
+          echo "===== Copying official Python patches ====="
+
+          mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
+
+          cp \
+            "$P4A_PYTHON_RECIPE/patches/"* \
+            "$LOCAL_PYTHON_RECIPE/patches/"
+
+
+          # -----------------------------------------------------
+          # Inject a SAFE helper into the official recipe.
+          #
+          # The helper is inserted at module level, BEFORE the
+          # Python3Recipe class.
+          #
+          # Then only ONE properly-indented line is inserted into
+          # build_arch().
+          #
+          # This avoids the indentation problem from Run #93.
+          # -----------------------------------------------------
+
+          echo
+          echo "===== Installing safe CPython grp source fixer ====="
 
           python - <<'PY'
           from pathlib import Path
@@ -218,208 +224,138 @@ jobs:
               "pythonforandroid/recipes/python3/__init__.py"
           )
 
-          text = recipe.read_text(encoding="utf-8")
+          text = recipe.read_text()
 
+          helper = r'''
+          def _fix_android_grp_source(recipe_build_dir):
+              """Remove unsupported POSIX group enumeration APIs from CPython."""
 
-          # This is the exact point in the official p4a recipe
-          # where the CPython recipe build directory is obtained.
-          marker = """        recipe_build_dir = self.get_build_dir(arch.arch)
-          """
+              from pathlib import Path
 
+              grp_file = Path(recipe_build_dir) / "Modules" / "grpmodule.c"
 
-          if marker not in text:
-              raise SystemExit(
-                  "ERROR: Could not find the expected "
-                  "'recipe_build_dir = self.get_build_dir(arch.arch)' "
-                  "line in the official p4a Python recipe."
-              )
-
-
-          # Do not inject the fix twice.
-          if "ANDROID_GRP_FIX" in text:
-              print("ANDROID_GRP_FIX already exists.")
-              raise SystemExit(0)
-
-
-          insertion = """        # ---------------------------------------------------------
-          # ANDROID_GRP_FIX
-          #
-          # Android does not provide setgrent/getgrent/endgrent.
-          # CPython 3.12.10's grp.getgrall() uses those functions.
-          #
-          # Modify Modules/grpmodule.c immediately before CPython
-          # compilation.
-          # ---------------------------------------------------------
-
-          grp_file = join(
-              recipe_build_dir,
-              'Modules',
-              'grpmodule.c'
-          )
-
-          if not exists(grp_file):
-              raise RuntimeError(
-                  'ANDROID_GRP_FIX: Modules/grpmodule.c was not found: '
-                  + grp_file
-              )
-
-          with open(grp_file, 'r', encoding='utf-8') as f:
-              grp_source = f.read()
-
-          grp_start = grp_source.find(
-              '    setgrent();'
-          )
-
-          grp_end = grp_source.find(
-              '    return d;',
-              grp_start
-          )
-
-          if grp_start == -1:
-              raise RuntimeError(
-                  'ANDROID_GRP_FIX: setgrent() was not found.'
-              )
-
-          if grp_end == -1:
-              raise RuntimeError(
-                  'ANDROID_GRP_FIX: return d; after setgrent() '
-                  'was not found.'
-              )
-
-          # Keep "return d;" but remove everything before it,
-          # including both endgrent() calls.
-          grp_source = (
-              grp_source[:grp_start]
-              + '    return d;'
-              + grp_source[grp_end + len('    return d;'):]
-          )
-
-          with open(grp_file, 'w', encoding='utf-8') as f:
-              f.write(grp_source)
-
-          # ---------------------------------------------------------
-          # Verify forbidden Android-incompatible functions
-          # are completely gone.
-          # ---------------------------------------------------------
-          with open(grp_file, 'r', encoding='utf-8') as f:
-              verify_source = f.read()
-
-          for forbidden in (
-              'setgrent();',
-              'getgrent();',
-              'endgrent();',
-          ):
-              if forbidden in verify_source:
+              if not grp_file.is_file():
                   raise RuntimeError(
-                      'ANDROID_GRP_FIX: '
-                      + forbidden
-                      + ' still exists in grpmodule.c'
+                      f"Could not find CPython grp source: {grp_file}"
                   )
 
-          print(
-              'ANDROID_GRP_FIX: Successfully removed '
-              'setgrent/getgrent/endgrent.'
+              source = grp_file.read_text()
+
+              # If already fixed, do nothing.
+              if "setgrent();" not in source:
+                  print("Android grp source already fixed.")
+                  return
+
+              start = source.find("    setgrent();")
+
+              if start < 0:
+                  raise RuntimeError(
+                      "Found grp source, but could not find setgrent()."
+                  )
+
+              return_marker = "    return d;"
+              end = source.find(return_marker, start)
+
+              if end < 0:
+                  raise RuntimeError(
+                      "Could not find return d; after setgrent()."
+                  )
+
+              replacement = source[:start] + source[end:]
+
+              # Verify all problematic APIs disappeared.
+              for name in (
+                  "setgrent();",
+                  "getgrent();",
+                  "endgrent();",
+              ):
+                  if name in replacement:
+                      raise RuntimeError(
+                          f"grp fix failed: {name} is still present."
+                      )
+
+              grp_file.write_text(replacement)
+
+              print(
+                  "SUCCESS: removed setgrent/getgrent/endgrent "
+                  "from Modules/grpmodule.c"
+              )
+          '''
+
+          class_marker = "class Python3Recipe(Recipe):"
+
+          if class_marker not in text:
+              raise SystemExit(
+                  "ERROR: Could not find Python3Recipe class."
+              )
+
+          if "_fix_android_grp_source" not in text:
+              text = text.replace(
+                  class_marker,
+                  helper.strip() + "\n\n\n" + class_marker,
+                  1
+              )
+
+          build_marker = (
+              "        recipe_build_dir = "
+              "self.get_build_dir(arch.arch)"
           )
 
-          """
+          call_line = "        _fix_android_grp_source(recipe_build_dir)"
 
+          if build_marker not in text:
+              raise SystemExit(
+                  "ERROR: Could not find recipe_build_dir line."
+              )
 
-          text = text.replace(
-              marker,
-              marker + insertion,
-              1
-          )
+          if call_line not in text:
+              text = text.replace(
+                  build_marker,
+                  build_marker + "\n" + call_line,
+                  1
+              )
 
+          recipe.write_text(text)
 
-          recipe.write_text(
-              text,
-              encoding="utf-8"
-          )
-
-          print(
-              "ANDROID_GRP_FIX successfully injected into "
-              "official p4a Python recipe."
-          )
+          print("Safe CPython grp fixer installed.")
           PY
 
 
-          # -------------------------------------------------------
-          # Verify injection
-          # -------------------------------------------------------
-          echo
-          echo "===== Verify ANDROID_GRP_FIX ====="
+          # -----------------------------------------------------
+          # Verify recipe syntax BEFORE Buildozer starts.
+          # -----------------------------------------------------
 
-          grep -n \
-            "ANDROID_GRP_FIX" \
+          echo
+          echo "===== Checking Python recipe syntax ====="
+
+          python -m py_compile \
             "$P4A_PYTHON_RECIPE/__init__.py"
 
+          echo "OK: python3 recipe syntax is valid."
+
+
+          # -----------------------------------------------------
+          # Show the modified build_arch section.
+          # -----------------------------------------------------
+
           echo
-          echo "===== Verify build_arch area ====="
+          echo "===== Python recipe build_arch section ====="
 
-          grep -n -A90 -B10 \
-            "ANDROID_GRP_FIX" \
-            "$P4A_PYTHON_RECIPE/__init__.py" | head -120
+          grep -n \
+            -A25 \
+            -B8 \
+            "recipe_build_dir = self.get_build_dir" \
+            "$P4A_PYTHON_RECIPE/__init__.py" || true
 
 
       # ---------------------------------------------------------
-      # 9. Verify local recipes
+      # 9. Verify Buildozer configuration
       # ---------------------------------------------------------
-      - name: Verify local recipes
+      - name: Verify Buildozer configuration
         shell: bash
         run: |
           set -e
 
-          echo "===== Local recipes ====="
-
-          find recipes \
-            -maxdepth 3 \
-            -type f \
-            -print | sort
-
-
-          echo
-          echo "===== Verify local python3 recipe ====="
-
-          if [ -f "recipes/python3/__init__.py" ]; then
-            echo "ERROR: recipes/python3/__init__.py must NOT exist."
-            exit 1
-          fi
-
-          echo "OK: recipes/python3/__init__.py is absent."
-
-
-          echo
-          echo "===== Verify old grp patch is absent ====="
-
-          if [ -f "recipes/python3/patches/disable_grp.patch" ]; then
-            echo "ERROR: disable_grp.patch must NOT exist."
-            exit 1
-          fi
-
-          echo "OK: disable_grp.patch is absent."
-
-
-          echo
-          echo "===== Verify official Python patches ====="
-
-          test -f \
-            "recipes/python3/patches/py3.8.1_fix_cortex_a8.patch"
-
-          test -f \
-            "recipes/python3/patches/py3.8.1.patch"
-
-          test -f \
-            "recipes/python3/patches/pyconfig_detection.patch"
-
-          echo "OK: required official Python patches exist."
-
-
-      # ---------------------------------------------------------
-      # 10. Verify Buildozer configuration
-      # ---------------------------------------------------------
-      - name: Show Buildozer configuration
-        shell: bash
-        run: |
           echo "===== buildozer.spec ====="
 
           grep -E \
@@ -436,42 +372,82 @@ jobs:
             -print | sort
 
 
+          echo
+          echo "===== Checking important requirements ====="
+
+          grep -q "opencv" buildozer.spec
+          grep -q "opencv_extras" buildozer.spec
+
+          echo "OK: OpenCV requirement present."
+          echo "OK: OpenCV Contrib requirement present."
+
+
+          echo
+          echo "===== Checking Python recipe ====="
+
+          if [ -f "recipes/python3/__init__.py" ]; then
+            echo "ERROR: local recipes/python3/__init__.py exists."
+            exit 1
+          fi
+
+          echo "OK: official p4a Python recipe will be used."
+
+
+      # ---------------------------------------------------------
+      # 10. Inspect the recipe BEFORE Buildozer
+      # ---------------------------------------------------------
+      - name: Inspect patched Python recipe
+        shell: bash
+        run: |
+          set -e
+
+          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+
+          echo "===== Python recipe version ====="
+
+          grep -n \
+            "version =" \
+            "$PYTHON_RECIPE" | head -5
+
+
+          echo
+          echo "===== grp fixer ====="
+
+          grep -n \
+            -A50 \
+            "_fix_android_grp_source" \
+            "$PYTHON_RECIPE"
+
+
+          echo
+          echo "===== Recipe syntax check ====="
+
+          python -m py_compile "$PYTHON_RECIPE"
+
+          echo "OK: recipe compiles successfully."
+
+
       # ---------------------------------------------------------
       # 11. Build APK
       # ---------------------------------------------------------
       - name: Build Android APK
+        shell: bash
         env:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
           PYTHONUNBUFFERED: "1"
-
         run: |
           set -e
 
           echo "=========================================="
-          echo "Starting Buildozer Android build"
+          echo " Starting Buildozer Android build"
           echo "=========================================="
 
           buildozer -v android debug
 
 
       # ---------------------------------------------------------
-      # 12. Show APK files
-      # ---------------------------------------------------------
-      - name: Check APK output
-        shell: bash
-        run: |
-          echo "===== APK files ====="
-
-          find bin \
-            -maxdepth 1 \
-            -type f \
-            -name "*.apk" \
-            -print \
-            -exec ls -lh {} \;
-
-
-      # ---------------------------------------------------------
-      # 13. Upload APK
+      # 12. Upload APK
       # ---------------------------------------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
