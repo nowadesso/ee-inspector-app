@@ -158,11 +158,11 @@ jobs:
 
 
           # -----------------------------------------------------
-          # Make sure we never use the old custom grp patch
+          # Remove old grp patch
           # -----------------------------------------------------
 
           echo
-          echo "===== Removing old disable_grp.patch from local recipe ====="
+          echo "===== Removing old disable_grp.patch ====="
 
           rm -f \
             "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
@@ -172,15 +172,14 @@ jobs:
 
 
           # -----------------------------------------------------
-          # Make sure local python3 recipe has NO __init__.py
+          # Local recipe must NOT contain __init__.py
           # -----------------------------------------------------
 
           echo
           echo "===== Checking local python3 recipe ====="
 
           if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
-            echo "ERROR:"
-            echo "recipes/python3/__init__.py must NOT exist."
+            echo "ERROR: recipes/python3/__init__.py must NOT exist."
             exit 1
           fi
 
@@ -188,7 +187,7 @@ jobs:
 
 
           # -----------------------------------------------------
-          # Copy official p4a patches into local recipe directory
+          # Copy official patches
           # -----------------------------------------------------
 
           echo
@@ -202,19 +201,103 @@ jobs:
 
 
           # -----------------------------------------------------
-          # Inject a SAFE helper into the official recipe.
-          #
-          # The helper is inserted at module level, BEFORE the
-          # Python3Recipe class.
-          #
-          # Then only ONE properly-indented line is inserted into
-          # build_arch().
-          #
-          # This avoids the indentation problem from Run #93.
+          # Show the exact recipe structure.
           # -----------------------------------------------------
 
           echo
-          echo "===== Installing safe CPython grp source fixer ====="
+          echo "===== Searching for recipe_build_dir ====="
+
+          grep -n \
+            "recipe_build_dir" \
+            "$P4A_PYTHON_RECIPE/__init__.py" || true
+
+
+          # -----------------------------------------------------
+          # Install a module-level helper.
+          #
+          # We append the helper to the END of the Python recipe.
+          # There is NO indentation here because it is module-level.
+          # -----------------------------------------------------
+
+          echo
+          echo "===== Installing CPython grp fixer ====="
+
+          cat >> "$P4A_PYTHON_RECIPE/__init__.py" <<'PYFIX'
+
+          # ---------------------------------------------------------
+          # EE Inspector Pro Android grp compatibility fix
+          # ---------------------------------------------------------
+
+          def _ee_inspector_fix_android_grp_source(recipe_build_dir):
+              from pathlib import Path
+
+              grp_file = (
+                  Path(recipe_build_dir)
+                  / "Modules"
+                  / "grpmodule.c"
+              )
+
+              if not grp_file.is_file():
+                  raise RuntimeError(
+                      f"CPython grp source not found: {grp_file}"
+                  )
+
+              source = grp_file.read_text()
+
+              if "setgrent();" not in source:
+                  print(
+                      "EE Inspector Pro: grp source already fixed."
+                  )
+                  return
+
+              start = source.find("    setgrent();")
+
+              if start < 0:
+                  raise RuntimeError(
+                      "Could not locate setgrent() in grpmodule.c"
+                  )
+
+              end = source.find(
+                  "    return d;",
+                  start
+              )
+
+              if end < 0:
+                  raise RuntimeError(
+                      "Could not locate return d; in grpmodule.c"
+                  )
+
+              source = source[:start] + source[end:]
+
+              for name in (
+                  "setgrent();",
+                  "getgrent();",
+                  "endgrent();",
+              ):
+                  if name in source:
+                      raise RuntimeError(
+                          f"grp fix failed: {name} still exists"
+                      )
+
+              grp_file.write_text(source)
+
+              print(
+                  "EE Inspector Pro: removed "
+                  "setgrent/getgrent/endgrent "
+                  "from Modules/grpmodule.c"
+              )
+
+          PYFIX
+
+
+          # -----------------------------------------------------
+          # Find the build_arch recipe_build_dir line.
+          #
+          # Insert ONE call immediately after it.
+          # -----------------------------------------------------
+
+          echo
+          echo "===== Adding grp fixer call ====="
 
           python - <<'PY'
           from pathlib import Path
@@ -226,103 +309,38 @@ jobs:
 
           text = recipe.read_text()
 
-          helper = r'''
-          def _fix_android_grp_source(recipe_build_dir):
-              """Remove unsupported POSIX group enumeration APIs from CPython."""
-
-              from pathlib import Path
-
-              grp_file = Path(recipe_build_dir) / "Modules" / "grpmodule.c"
-
-              if not grp_file.is_file():
-                  raise RuntimeError(
-                      f"Could not find CPython grp source: {grp_file}"
-                  )
-
-              source = grp_file.read_text()
-
-              # If already fixed, do nothing.
-              if "setgrent();" not in source:
-                  print("Android grp source already fixed.")
-                  return
-
-              start = source.find("    setgrent();")
-
-              if start < 0:
-                  raise RuntimeError(
-                      "Found grp source, but could not find setgrent()."
-                  )
-
-              return_marker = "    return d;"
-              end = source.find(return_marker, start)
-
-              if end < 0:
-                  raise RuntimeError(
-                      "Could not find return d; after setgrent()."
-                  )
-
-              replacement = source[:start] + source[end:]
-
-              # Verify all problematic APIs disappeared.
-              for name in (
-                  "setgrent();",
-                  "getgrent();",
-                  "endgrent();",
-              ):
-                  if name in replacement:
-                      raise RuntimeError(
-                          f"grp fix failed: {name} is still present."
-                      )
-
-              grp_file.write_text(replacement)
-
-              print(
-                  "SUCCESS: removed setgrent/getgrent/endgrent "
-                  "from Modules/grpmodule.c"
-              )
-          '''
-
-          class_marker = "class Python3Recipe(Recipe):"
-
-          if class_marker not in text:
-              raise SystemExit(
-                  "ERROR: Could not find Python3Recipe class."
-              )
-
-          if "_fix_android_grp_source" not in text:
-              text = text.replace(
-                  class_marker,
-                  helper.strip() + "\n\n\n" + class_marker,
-                  1
-              )
-
-          build_marker = (
+          marker = (
               "        recipe_build_dir = "
               "self.get_build_dir(arch.arch)"
           )
 
-          call_line = "        _fix_android_grp_source(recipe_build_dir)"
+          call = (
+              "        "
+              "_ee_inspector_fix_android_grp_source("
+              "recipe_build_dir)"
+          )
 
-          if build_marker not in text:
+          if marker not in text:
               raise SystemExit(
                   "ERROR: Could not find recipe_build_dir line."
               )
 
-          if call_line not in text:
+          if call not in text:
               text = text.replace(
-                  build_marker,
-                  build_marker + "\n" + call_line,
+                  marker,
+                  marker + "\n" + call,
                   1
               )
 
           recipe.write_text(text)
 
-          print("Safe CPython grp fixer installed.")
+          print("OK: grp fixer call inserted.")
           PY
 
 
           # -----------------------------------------------------
-          # Verify recipe syntax BEFORE Buildozer starts.
+          # VERY IMPORTANT:
+          # Check Python syntax now.
           # -----------------------------------------------------
 
           echo
@@ -331,20 +349,29 @@ jobs:
           python -m py_compile \
             "$P4A_PYTHON_RECIPE/__init__.py"
 
-          echo "OK: python3 recipe syntax is valid."
+          echo "OK: Python recipe syntax is valid."
 
 
           # -----------------------------------------------------
-          # Show the modified build_arch section.
+          # Show the relevant section.
           # -----------------------------------------------------
 
           echo
-          echo "===== Python recipe build_arch section ====="
+          echo "===== Relevant Python recipe section ====="
 
           grep -n \
             -A25 \
             -B8 \
-            "recipe_build_dir = self.get_build_dir" \
+            "recipe_build_dir" \
+            "$P4A_PYTHON_RECIPE/__init__.py" || true
+
+
+          echo
+          echo "===== Grp fixer definition ====="
+
+          grep -n \
+            -A45 \
+            "_ee_inspector_fix_android_grp_source" \
             "$P4A_PYTHON_RECIPE/__init__.py" || true
 
 
