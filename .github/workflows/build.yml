@@ -1,3 +1,4 @@
+```yaml
 name: Build Android APK
 
 on:
@@ -20,6 +21,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
+
           sudo apt-get install -y \
             git \
             zip \
@@ -51,9 +53,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-buildozer-v4-${{ hashFiles('buildozer.spec', 'recipes/**', '.github/workflows/build.yml') }}
+          key: ${{ runner.os }}-buildozer-v5-${{ hashFiles('buildozer.spec', 'recipes/**', '.github/workflows/build.yml') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-v4-
+            ${{ runner.os }}-buildozer-v5-
 
       - name: Clean stale build state
         run: |
@@ -62,108 +64,229 @@ jobs:
           rm -rf .buildozer/android/platform/build/dists
           mkdir -p bin
 
-      - name: Verify local recipes
+      - name: Verify project recipes
         run: |
-          echo "===== LOCAL RECIPES ====="
+          echo "========================================"
+          echo "PROJECT RECIPE CHECK"
+          echo "========================================"
+
+          echo "All recipe files:"
           find recipes -type f -print
 
-          echo "===== OPENCV RECIPES ====="
-          find recipes/opencv recipes/opencv_extras -maxdepth 3 -type f -print
-
-          echo "===== OPENCV RECIPE CHECK ====="
+          echo ""
+          echo "OpenCV recipe:"
           test -f recipes/opencv/__init__.py
           test -f recipes/opencv/patches/p4a_build.patch
+
+          echo ""
+          echo "OpenCV Contrib recipe:"
           test -f recipes/opencv_extras/__init__.py
 
-          echo "===== PYTHON PATCH CHECK ====="
+          echo ""
+          echo "Python grp patch:"
           test -f recipes/python3/patches/disable_grp.patch
 
-          echo "OpenCV + OpenCV Contrib local recipes: OK"
-          echo "Python grp patch: OK"
+          echo ""
+          echo "Checking that old broken Python recipe is NOT present:"
+          test ! -f recipes/python3/__init__.py
+
+          echo ""
+          echo "========================================"
+          echo "ALL LOCAL RECIPE CHECKS PASSED"
+          echo "========================================"
 
       - name: Prepare patched python-for-android
+        shell: bash
         run: |
+          set -e
+
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
 
-          echo "===== CLONING PYTHON-FOR-ANDROID ====="
+          echo "========================================"
+          echo "CLONING PYTHON-FOR-ANDROID"
+          echo "========================================"
+
           git clone \
             --depth 1 \
-            --branch master \
+            --branch v2026.05.09 \
             https://github.com/kivy/python-for-android.git \
             "$P4A_DIR"
 
-          echo "===== P4A VERSION ====="
+          echo ""
+          echo "P4A commit:"
           cd "$P4A_DIR"
           git log -1 --oneline
 
-          echo "===== CHECKING OFFICIAL PYTHON3 RECIPE ====="
-          test -f "$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+          echo ""
+          echo "========================================"
+          echo "LOCATING OFFICIAL PYTHON3 RECIPE"
+          echo "========================================"
 
-          echo "===== COPYING GRP PATCH ====="
+          PYTHON3_RECIPE="$(find "$P4A_DIR" \
+            -type f \
+            -path '*/recipes/python3/__init__.py' \
+            -print \
+            -quit)"
+
+          if [ -z "$PYTHON3_RECIPE" ]; then
+            echo "ERROR: Official python3 recipe was not found."
+            echo ""
+            echo "Directories containing 'python3':"
+            find "$P4A_DIR" \
+              -type d \
+              -iname '*python3*' \
+              -print || true
+
+            echo ""
+            echo "Recipe directories:"
+            find "$P4A_DIR/pythonforandroid/recipes" \
+              -maxdepth 2 \
+              -type d \
+              -print | head -100 || true
+
+            exit 1
+          fi
+
+          echo "Found official Python3 recipe:"
+          echo "$PYTHON3_RECIPE"
+
+          echo ""
+          echo "========================================"
+          echo "COPYING GRP PATCH"
+          echo "========================================"
+
+          RECIPE_DIR="$(dirname "$PYTHON3_RECIPE")"
+
           cp \
             "$GITHUB_WORKSPACE/recipes/python3/patches/disable_grp.patch" \
-            "$P4A_DIR/pythonforandroid/recipes/python3/patches/disable_grp.patch"
+            "$RECIPE_DIR/patches/disable_grp.patch"
 
-          echo "===== ADDING PATCH TO OFFICIAL PYTHON3 RECIPE ====="
-          python - <<'PY'
+          echo "Patch copied to:"
+          echo "$RECIPE_DIR/patches/disable_grp.patch"
+
+          echo ""
+          echo "========================================"
+          echo "ADDING PATCH TO OFFICIAL RECIPE"
+          echo "========================================"
+
+          python - "$PYTHON3_RECIPE" <<'PY'
+          import sys
           from pathlib import Path
 
-          recipe = Path(
-              ".buildozer/android/platform/python-for-android/"
-              "pythonforandroid/recipes/python3/__init__.py"
+          recipe_path = Path(sys.argv[1])
+
+          print(f"Editing: {recipe_path}")
+
+          text = recipe_path.read_text(encoding="utf-8")
+
+          patch_name = "'patches/disable_grp.patch'"
+
+          if patch_name in text:
+              print("disable_grp.patch is already registered.")
+              raise SystemExit(0)
+
+          marker = "patches = ["
+
+          if marker not in text:
+              print("ERROR: Could not find the official 'patches = [' declaration.")
+              print()
+              print("First 100 lines of recipe:")
+              print("\n".join(text.splitlines()[:100]))
+              raise SystemExit(1)
+
+          replacement = (
+              "patches = [\n"
+              "    'patches/disable_grp.patch',"
           )
 
-          text = recipe.read_text()
+          text = text.replace(
+              marker,
+              replacement,
+              1
+          )
 
-          patch_line = '    "patches/disable_grp.patch",\n'
+          recipe_path.write_text(text, encoding="utf-8")
 
-          if patch_line not in text:
-              marker = "patches = [\n"
-
-              if marker not in text:
-                  raise SystemExit(
-                      "ERROR: Could not find 'patches = [' "
-                      "in the official Python3 recipe."
-                  )
-
-              text = text.replace(
-                  marker,
-                  marker + patch_line,
-                  1
-              )
-
-              recipe.write_text(text)
-
-          print("Python3 recipe successfully configured.")
+          print("disable_grp.patch successfully added.")
           PY
 
-          echo "===== VERIFYING PATCH CONFIGURATION ====="
-          grep -n -A8 -B2 "patches =" \
-            pythonforandroid/recipes/python3/__init__.py
+          echo ""
+          echo "========================================"
+          echo "VERIFYING PATCH CONFIGURATION"
+          echo "========================================"
 
-          echo "===== VERIFYING PATCH FILE ====="
-          ls -l \
-            pythonforandroid/recipes/python3/patches/disable_grp.patch
+          grep -n \
+            -A8 \
+            -B2 \
+            "patches = \[" \
+            "$PYTHON3_RECIPE"
 
-          echo "===== P4A PREPARATION COMPLETE ====="
+          echo ""
+          echo "Patch file:"
+          ls -lh "$RECIPE_DIR/patches/disable_grp.patch"
 
-      - name: Verify build configuration
+          echo ""
+          echo "========================================"
+          echo "P4A PREPARATION COMPLETE"
+          echo "========================================"
+
+      - name: Verify Buildozer configuration
         run: |
-          echo "===== BUILDOZER CONFIG ====="
+          echo "========================================"
+          echo "BUILDOZER CONFIGURATION"
+          echo "========================================"
+
           grep -E \
             "^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.source_dir|p4a.local_recipes)" \
             buildozer.spec || true
 
-          echo "===== PYTHON RECIPE ====="
-          grep -n "disable_grp.patch" \
-            .buildozer/android/platform/python-for-android/pythonforandroid/recipes/python3/__init__.py
+          echo ""
+          echo "========================================"
+          echo "VERIFYING P4A DIRECTORY"
+          echo "========================================"
 
-          echo "===== LOCAL PYTHON RECIPE DIRECTORY ====="
-          find recipes/python3 -maxdepth 3 -type f -print
+          test -d \
+            .buildozer/android/platform/python-for-android
 
-          echo "===== IMPORTANT CHECK ====="
+          echo "P4A source directory exists."
+
+          echo ""
+          echo "========================================"
+          echo "VERIFYING GRP PATCH"
+          echo "========================================"
+
+          GRP_PATCH="$(find \
+            .buildozer/android/platform/python-for-android \
+            -type f \
+            -path '*/recipes/python3/patches/disable_grp.patch' \
+            -print \
+            -quit)"
+
+          if [ -z "$GRP_PATCH" ]; then
+            echo "ERROR: disable_grp.patch was not installed into p4a."
+            exit 1
+          fi
+
+          echo "Found:"
+          echo "$GRP_PATCH"
+
+          echo ""
+          echo "========================================"
+          echo "VERIFYING LOCAL RECIPES"
+          echo "========================================"
+
+          test -f recipes/opencv/__init__.py
+          test -f recipes/opencv_extras/__init__.py
+          test -f recipes/python3/patches/disable_grp.patch
+
+          echo "OpenCV recipe: OK"
+          echo "OpenCV Contrib recipe: OK"
+          echo "Python grp patch: OK"
+
+          echo ""
+          echo "No custom recipes/python3/__init__.py:"
           test ! -f recipes/python3/__init__.py
-          echo "Correct: local recipes/python3/__init__.py does NOT exist."
+          echo "OK"
 
       - name: Build APK
         env:
@@ -176,3 +299,4 @@ jobs:
         with:
           name: android-apk
           path: bin/*.apk
+```
