@@ -159,12 +159,16 @@ jobs:
 
 
           echo
-          echo "===== Copying custom grp patch ====="
+          echo "===== Installing custom grp patch into p4a ====="
 
           test -f \
             "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
 
-          echo "disable_grp.patch found."
+          cp \
+            "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch" \
+            "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
+
+          echo "disable_grp.patch copied into official p4a recipe."
 
 
           echo
