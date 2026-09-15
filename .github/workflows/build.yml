@@ -237,39 +237,7 @@ jobs:
       # configure.ac:215:
       # error: possibly undefined macro: LT_SYS_SYMBOL_USCORE
       # ---------------------------------------------------------
-      - name: Verify libtool dependencies
-        run: |
-
-          echo "===== libtool ====="
-
-          libtool --version
-
-
-          echo
-          echo "===== libtoolize ====="
-
-          libtoolize --version
-
-
-          echo
-          echo "===== libltdl packages ====="
-
-          dpkg -l | grep -E 'libtool|libltdl' || true
-
-
-          echo
-          echo "===== Libtool macro files ====="
-
-          find /usr/share/aclocal /usr/share/libtool \
-            -type f \
-            \( \
-              -name 'ltdl.m4' \
-              -o \
-              -name 'libtool.m4' \
-            \) \
-            -print 2>/dev/null || true
-
-
+      
       # ---------------------------------------------------------
       # 11. Show important Buildozer configuration
       # ---------------------------------------------------------
