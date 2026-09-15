@@ -21,10 +21,26 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk python3-pip python3-venv \
-            autoconf automake libtool pkg-config zlib1g-dev \
-            libncurses5-dev libncursesw5-dev libtinfo6 cmake \
-            libffi-dev libssl-dev lld libltdl-dev gettext
+            git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            python3-pip \
+            python3-venv \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libtinfo6 \
+            cmake \
+            libffi-dev \
+            libssl-dev \
+            lld \
+            libltdl-dev \
+            gettext
 
       - name: Install Buildozer
         run: |
@@ -58,46 +74,108 @@ jobs:
           test -f recipes/opencv/__init__.py
           test -f recipes/opencv/patches/p4a_build.patch
           test -f recipes/opencv_extras/__init__.py
-          echo "OpenCV + OpenCV Contrib local recipes: OK"
 
-      
+          echo "===== PYTHON PATCH CHECK ====="
+          test -f recipes/python3/patches/disable_grp.patch
+
+          echo "OpenCV + OpenCV Contrib local recipes: OK"
+          echo "Python grp patch: OK"
+
+      - name: Prepare patched python-for-android
+        run: |
+          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+
+          echo "===== CLONING PYTHON-FOR-ANDROID ====="
+          git clone \
+            --depth 1 \
+            --branch master \
+            https://github.com/kivy/python-for-android.git \
+            "$P4A_DIR"
+
+          echo "===== P4A VERSION ====="
+          cd "$P4A_DIR"
+          git log -1 --oneline
+
+          echo "===== CHECKING OFFICIAL PYTHON3 RECIPE ====="
+          test -f "$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+
+          echo "===== COPYING GRP PATCH ====="
+          cp \
+            "$GITHUB_WORKSPACE/recipes/python3/patches/disable_grp.patch" \
+            "$P4A_DIR/pythonforandroid/recipes/python3/patches/disable_grp.patch"
+
+          echo "===== ADDING PATCH TO OFFICIAL PYTHON3 RECIPE ====="
+          python - <<'PY'
+          from pathlib import Path
+
+          recipe = Path(
+              ".buildozer/android/platform/python-for-android/"
+              "pythonforandroid/recipes/python3/__init__.py"
+          )
+
+          text = recipe.read_text()
+
+          patch_line = '    "patches/disable_grp.patch",\n'
+
+          if patch_line not in text:
+              marker = "patches = [\n"
+
+              if marker not in text:
+                  raise SystemExit(
+                      "ERROR: Could not find 'patches = [' "
+                      "in the official Python3 recipe."
+                  )
+
+              text = text.replace(
+                  marker,
+                  marker + patch_line,
+                  1
+              )
+
+              recipe.write_text(text)
+
+          print("Python3 recipe successfully configured.")
+          PY
+
+          echo "===== VERIFYING PATCH CONFIGURATION ====="
+          grep -n -A8 -B2 "patches =" \
+            pythonforandroid/recipes/python3/__init__.py
+
+          echo "===== VERIFYING PATCH FILE ====="
+          ls -l \
+            pythonforandroid/recipes/python3/patches/disable_grp.patch
+
+          echo "===== P4A PREPARATION COMPLETE ====="
+
+      - name: Verify build configuration
+        run: |
+          echo "===== BUILDOZER CONFIG ====="
+          grep -E \
+            "^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.source_dir|p4a.local_recipes)" \
+            buildozer.spec || true
+
+          echo "===== PYTHON RECIPE ====="
+          grep -n "disable_grp.patch" \
+            .buildozer/android/platform/python-for-android/pythonforandroid/recipes/python3/__init__.py
+
+          echo "===== LOCAL PYTHON RECIPE DIRECTORY ====="
+          find recipes/python3 -maxdepth 3 -type f -print
+
+          echo "===== IMPORTANT CHECK ====="
+          test ! -f recipes/python3/__init__.py
+          echo "Correct: local recipes/python3/__init__.py does NOT exist."
+
       - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: "1"
         run: |
-          set +e
           buildozer android debug --verbose
-          BUILD_STATUS=$?
 
-          echo ""
-          echo "========================================"
-          echo "PYTHON GRP SOURCE AFTER PATCH FAILURE"
-          echo "========================================"
-
-          find .buildozer/android/platform/build-arm64-v8a/build/other_builds/python3 \
-            -path '*/Modules/grpmodule.c' \
-            -exec sh -c '
-              echo "===== $1 ====="
-              nl -ba "$1" | sed -n "230,310p"
-            ' _ {} \;
-
-          echo ""
-          echo "========================================"
-          echo "REJECTED PATCH"
-          echo "========================================"
-
-          find .buildozer/android/platform/build-arm64-v8a/build/other_builds/python3 \
-            -name "grpmodule.c.rej" \
-            -exec sh -c '
-              echo "===== $1 ====="
-              cat "$1"
-            ' _ {} \;
-
-          exit $BUILD_STATUS
-
-           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: bin/*.apk
+```
+
+This should allow the **official p4a Python 3 recipe** to build Python 3.12.10 while applying the Android `grp` workaround, without replacing the official recipe or removing OpenCV/Contrib.
