@@ -62,25 +62,7 @@ jobs:
           rm -rf .buildozer/android/platform/build/dists
           mkdir -p bin
 
-      - name: Verify local recipes
-        run: |
-          echo "===== LOCAL RECIPES ====="
-          find recipes -type f -print
-
-          echo "===== OPENCV RECIPES ====="
-          find recipes/opencv recipes/opencv_extras -maxdepth 3 -type f -print
-
-          echo "===== OPENCV RECIPE CHECK ====="
-          test -f recipes/opencv/__init__.py
-          test -f recipes/opencv/patches/p4a_build.patch
-          test -f recipes/opencv_extras/__init__.py
-
-          echo "===== PYTHON PATCH CHECK ====="
-          test -f recipes/python3/patches/disable_grp.patch
-
-          echo "OpenCV + OpenCV Contrib local recipes: OK"
-          echo "Python grp patch: OK"
-
+      
       - name: Prepare patched python-for-android
         run: |
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
