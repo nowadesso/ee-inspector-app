@@ -94,12 +94,15 @@ jobs:
           echo "ALL LOCAL RECIPE CHECKS PASSED"
           echo "========================================"
 
+      
       - name: Prepare patched python-for-android
         shell: bash
         run: |
           set -e
 
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
+          P4A_PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
 
           echo "========================================"
           echo "CLONING PYTHON-FOR-ANDROID"
@@ -118,116 +121,79 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "LOCATING OFFICIAL PYTHON3 RECIPE"
+          echo "CHECKING OFFICIAL PYTHON3 RECIPE"
           echo "========================================"
 
-          PYTHON3_RECIPE="$(find "$P4A_DIR" \
-            -type f \
-            -path '*/recipes/python3/__init__.py' \
-            -print \
-            -quit)"
+          test -f "$P4A_PYTHON_RECIPE/__init__.py"
 
-          if [ -z "$PYTHON3_RECIPE" ]; then
-            echo "ERROR: Official python3 recipe was not found."
-            echo ""
-            echo "Directories containing 'python3':"
-            find "$P4A_DIR" \
-              -type d \
-              -iname '*python3*' \
-              -print || true
-
-            echo ""
-            echo "Recipe directories:"
-            find "$P4A_DIR/pythonforandroid/recipes" \
-              -maxdepth 2 \
-              -type d \
-              -print | head -100 || true
-
-            exit 1
-          fi
-
-          echo "Found official Python3 recipe:"
-          echo "$PYTHON3_RECIPE"
+          echo "Official Python3 recipe found:"
+          echo "$P4A_PYTHON_RECIPE"
 
           echo ""
           echo "========================================"
-          echo "COPYING GRP PATCH"
+          echo "COPYING OFFICIAL PYTHON PATCHES"
           echo "========================================"
 
-          RECIPE_DIR="$(dirname "$PYTHON3_RECIPE")"
+          mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
+
+          cp -v \
+            "$P4A_PYTHON_RECIPE/patches/"* \
+            "$LOCAL_PYTHON_RECIPE/patches/"
+
+          echo ""
+          echo "Official Python patches now available locally:"
+          find "$LOCAL_PYTHON_RECIPE/patches" \
+            -maxdepth 1 \
+            -type f \
+            -printf '%f\n' \
+            | sort
+
+          echo ""
+          echo "========================================"
+          echo "INSTALLING GRP PATCH"
+          echo "========================================"
 
           cp \
             "$GITHUB_WORKSPACE/recipes/python3/patches/disable_grp.patch" \
-            "$RECIPE_DIR/patches/disable_grp.patch"
+            "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
 
-          echo "Patch copied to:"
-          echo "$RECIPE_DIR/patches/disable_grp.patch"
+          echo ""
+          echo "Final local Python patches:"
+          find "$LOCAL_PYTHON_RECIPE/patches" \
+            -maxdepth 1 \
+            -type f \
+            -printf '%f\n' \
+            | sort
 
           echo ""
           echo "========================================"
-          echo "ADDING PATCH TO OFFICIAL RECIPE"
+          echo "VERIFYING REQUIRED PATCHES"
           echo "========================================"
 
-          python - "$PYTHON3_RECIPE" <<'PY'
-          import sys
-          from pathlib import Path
+          test -f \
+            "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
 
-          recipe_path = Path(sys.argv[1])
+          test -f \
+            "$LOCAL_PYTHON_RECIPE/patches/py3.8.1_fix_cortex_a8.patch"
 
-          print(f"Editing: {recipe_path}")
-
-          text = recipe_path.read_text(encoding="utf-8")
-
-          patch_name = "'patches/disable_grp.patch'"
-
-          if patch_name in text:
-              print("disable_grp.patch is already registered.")
-              raise SystemExit(0)
-
-          marker = "patches = ["
-
-          if marker not in text:
-              print("ERROR: Could not find the official 'patches = [' declaration.")
-              print()
-              print("First 100 lines of recipe:")
-              print("\n".join(text.splitlines()[:100]))
-              raise SystemExit(1)
-
-          replacement = (
-              "patches = [\n"
-              "    'patches/disable_grp.patch',"
-          )
-
-          text = text.replace(
-              marker,
-              replacement,
-              1
-          )
-
-          recipe_path.write_text(text, encoding="utf-8")
-
-          print("disable_grp.patch successfully added.")
-          PY
+          echo ""
+          echo "Required Python patches are present."
 
           echo ""
           echo "========================================"
-          echo "VERIFYING PATCH CONFIGURATION"
+          echo "VERIFYING GRP PATCH"
           echo "========================================"
 
           grep -n \
-            -A8 \
-            -B2 \
-            "patches = \[" \
-            "$PYTHON3_RECIPE"
-
-          echo ""
-          echo "Patch file:"
-          ls -lh "$RECIPE_DIR/patches/disable_grp.patch"
+            "setgrent\|getgrent\|endgrent" \
+            "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch" \
+            || true
 
           echo ""
           echo "========================================"
           echo "P4A PREPARATION COMPLETE"
           echo "========================================"
+
 
       - name: Verify Buildozer configuration
         run: |
