@@ -1,6 +1,6 @@
-import os
 from multiprocessing import cpu_count
 from os.path import join
+import os
 
 import sh
 from pythonforandroid.logger import shprint
@@ -173,17 +173,17 @@ class OpenCVRecipe(NDKRecipe):
             )
 
             if py_major == '3' and not os.path.isfile(link_txt):
-               print(
-                   'EE Inspector Pro: OpenCV Python binding '
-                   'link.txt was not generated.'
-              )
-              print(
-                   'EE Inspector Pro: Continuing with native '
-                   'OpenCV libraries.'
-              )
-            else:
+                print(
+                    'EE Inspector Pro: OpenCV Python binding '
+                    'link.txt was not generated.'
+                )
 
-            
+                print(
+                    'EE Inspector Pro: Continuing with native '
+                    'OpenCV libraries.'
+                )
+
+            else:
                 with open(link_txt, 'r+') as f:
                     content = f.read().replace(
                         '-version',
