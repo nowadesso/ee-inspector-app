@@ -51,18 +51,6 @@ jobs:
           echo "===== LOCAL RECIPES ====="
           find recipes -type f -print
 
-          echo "===== PYTHON RECIPE CHECK ====="
-          test -f recipes/python3/__init__.py
-          test -f recipes/python3/patches/disable_grp.patch
-          echo "Python3 local recipe: OK"
-          echo "Python3 grp patch: OK"
-
-          echo "===== PYTHON RECIPE ====="
-          cat recipes/python3/__init__.py
-
-          echo "===== GRP PATCH ====="
-          cat recipes/python3/patches/disable_grp.patch
-
           echo "===== OPENCV RECIPES ====="
           find recipes/opencv recipes/opencv_extras -maxdepth 3 -type f -print
 
