@@ -91,9 +91,37 @@ jobs:
         env:
           BUILDOZER_WARN_ON_ROOT: "1"
         run: |
+          set +e
           buildozer android debug --verbose
+          BUILD_STATUS=$?
 
-      
+          echo ""
+          echo "========================================"
+          echo "PYTHON GRP SOURCE AFTER PATCH FAILURE"
+          echo "========================================"
+
+          find .buildozer/android/platform/build-arm64-v8a/build/other_builds/python3 \
+            -path '*/Modules/grpmodule.c' \
+            -exec sh -c '
+              echo "===== $1 ====="
+              nl -ba "$1" | sed -n "230,310p"
+            ' _ {} \;
+
+          echo ""
+          echo "========================================"
+          echo "REJECTED PATCH"
+          echo "========================================"
+
+          find .buildozer/android/platform/build-arm64-v8a/build/other_builds/python3 \
+            -name "grpmodule.c.rej" \
+            -exec sh -c '
+              echo "===== $1 ====="
+              cat "$1"
+            ' _ {} \;
+
+          exit $BUILD_STATUS
+
+           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
