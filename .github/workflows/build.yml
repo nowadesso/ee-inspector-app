@@ -343,6 +343,24 @@ jobs:
         run: |
 
           echo "===== Starting Buildozer ====="
+      - name: Verify Python grp source
+        shell: bash
+        run: |
+          set -e
+
+           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+           PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
+
+          echo "===== Python recipe ====="
+          grep -n "version =" "$PYTHON_RECIPE/__init__.py" | head -5
+
+          echo
+          echo "===== grp patch ====="
+          cat "$PYTHON_RECIPE/patches/disable_grp.patch"
+
+          echo
+          echo "===== Python source download/build configuration ====="
+          grep -n "CPython\|python.org\|version" "$PYTHON_RECIPE/__init__.py" | head -30
 
           buildozer -v android debug
 
