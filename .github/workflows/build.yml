@@ -350,6 +350,24 @@ jobs:
           echo
           echo "===== Python source download/build configuration ====="
           grep -n "CPython\|python.org\|version" "$PYTHON_RECIPE/__init__.py" | head -30
+      - name: Inspect CPython grp source
+        shell: bash
+        run: |
+          set -e
+
+          BUILD_ROOT="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a"
+          PYTHON_BUILD="$BUILD_ROOT/build/other_builds/python3/arm64-v8a__ndk_target_24/python3"
+
+          echo "===== Python build directory ====="
+          ls -la "$PYTHON_BUILD" || true
+
+          echo
+          echo "===== Modules/grpmodule.c ====="
+          if [ -f "$PYTHON_BUILD/Modules/grpmodule.c" ]; then
+              nl -ba "$PYTHON_BUILD/Modules/grpmodule.c" | sed -n '230,320p'
+          else
+              echo "grpmodule.c is not available at this point."
+          fi
 
           buildozer -v android debug
 
