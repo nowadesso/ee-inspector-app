@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -289,7 +288,7 @@ PY
 
           grep -n \
             -A45 \
-            "_ee_inspector_fix_android_grp_source" \
+            "_fix_android_grp_source" \
             "$P4A_PYTHON_RECIPE/__init__.py" || true
 
       - name: Verify Buildozer configuration
