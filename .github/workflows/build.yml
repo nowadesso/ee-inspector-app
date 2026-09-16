@@ -360,7 +360,7 @@ PY
           echo " Starting Buildozer Android build"
           echo "=========================================="
 
-          buildozer -v android debug
+          buildozer -v android debug --directory
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
