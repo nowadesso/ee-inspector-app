@@ -1,4 +1,3 @@
-```yaml
 name: Build EE Inspector Pro APK
 
 on:
@@ -13,25 +12,14 @@ jobs:
 
     steps:
 
-      # ---------------------------------------------------------
-      # 1. Checkout project
-      # ---------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      # ---------------------------------------------------------
-      # 2. Set up host Python
-      # ---------------------------------------------------------
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-
-      # ---------------------------------------------------------
-      # 3. Install Ubuntu build dependencies
-      # ---------------------------------------------------------
       - name: Install system dependencies
         run: |
           set -e
@@ -62,20 +50,12 @@ jobs:
             patch \
             build-essential
 
-
-      # ---------------------------------------------------------
-      # 4. Set Java 17 for Gradle / Android build
-      # ---------------------------------------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-
-      # ---------------------------------------------------------
-      # 5. Verify Java
-      # ---------------------------------------------------------
       - name: Verify Java
         shell: bash
         run: |
@@ -84,18 +64,12 @@ jobs:
           echo "===== Java environment ====="
           echo "JAVA_HOME=$JAVA_HOME"
 
-          echo
           echo "===== java ====="
           java -version
 
-          echo
           echo "===== javac ====="
           javac -version
 
-
-      # ---------------------------------------------------------
-      # 6. Install Buildozer / Cython
-      # ---------------------------------------------------------
       - name: Install Python build tools
         run: |
           set -e
@@ -106,10 +80,6 @@ jobs:
             buildozer \
             "cython<3.4"
 
-
-      # ---------------------------------------------------------
-      # 7. Cache Buildozer files
-      # ---------------------------------------------------------
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
@@ -119,10 +89,6 @@ jobs:
           restore-keys: |
             buildozer-${{ runner.os }}-
 
-
-      # ---------------------------------------------------------
-      # 8. Remove stale python-for-android checkout
-      # ---------------------------------------------------------
       - name: Remove stale python-for-android
         run: |
           set -e
@@ -130,10 +96,6 @@ jobs:
           rm -rf \
             "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
 
-
-      # ---------------------------------------------------------
-      # 9. Clone known python-for-android version
-      # ---------------------------------------------------------
       - name: Prepare python-for-android
         run: |
           set -e
@@ -148,25 +110,12 @@ jobs:
             https://github.com/kivy/python-for-android.git \
             "$P4A_DIR"
 
-          echo
           echo "===== python-for-android version ====="
 
           cd "$P4A_DIR"
 
           git describe --tags --always || true
 
-
-      # ---------------------------------------------------------
-      # 10. Prepare official Python recipe
-      #
-      # IMPORTANT:
-      # We DO NOT use disable_grp.patch anymore.
-      #
-      # We keep the official p4a Python recipe untouched except
-      # for one small helper which removes the Android-incompatible
-      # setgrent/getgrent/endgrent block immediately before CPython
-      # compilation.
-      # ---------------------------------------------------------
       - name: Prepare Python recipe
         shell: bash
         run: |
@@ -179,7 +128,6 @@ jobs:
           echo "===== P4A directory ====="
           echo "$P4A_DIR"
 
-          echo
           echo "===== Official Python recipe ====="
           echo "$P4A_PYTHON_RECIPE"
 
@@ -187,26 +135,11 @@ jobs:
 
           echo "OK: official Python recipe exists."
 
-
-          # -----------------------------------------------------
-          # Remove old grp patch
-          # -----------------------------------------------------
-
-          echo
           echo "===== Removing old disable_grp.patch ====="
 
-          rm -f \
-            "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
+          rm -f "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
+          rm -f "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
 
-          rm -f \
-            "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
-
-
-          # -----------------------------------------------------
-          # Local recipe must NOT contain __init__.py
-          # -----------------------------------------------------
-
-          echo
           echo "===== Checking local python3 recipe ====="
 
           if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
@@ -216,41 +149,18 @@ jobs:
 
           echo "OK: local recipes/python3/__init__.py is absent."
 
-
-          # -----------------------------------------------------
-          # Copy official patches
-          # -----------------------------------------------------
-
-          echo
           echo "===== Copying official Python patches ====="
 
           mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
 
-          cp \
-            "$P4A_PYTHON_RECIPE/patches/"* \
+          cp "$P4A_PYTHON_RECIPE/patches/"* \
             "$LOCAL_PYTHON_RECIPE/patches/"
 
-
-          # -----------------------------------------------------
-          # Show the exact recipe structure.
-          # -----------------------------------------------------
-
-          echo
           echo "===== Searching for recipe_build_dir ====="
 
-          grep -n \
-            "recipe_build_dir" \
+          grep -n "recipe_build_dir" \
             "$P4A_PYTHON_RECIPE/__init__.py" || true
 
-
-          # -----------------------------------------------------
-          # Install a module-level helper.
-          #
-          # We append the helper to the END of the Python recipe.
-          # There is NO indentation here because it is module-level.
-          # -----------------------------------------------------
-
-          echo
           echo "===== Installing CPython grp fixer ====="
 
           cat >> "$P4A_PYTHON_RECIPE/__init__.py" <<'PYFIX'
@@ -320,14 +230,6 @@ def _ee_inspector_fix_android_grp_source(recipe_build_dir):
 
 PYFIX
 
-
-          # -----------------------------------------------------
-          # Find the build_arch recipe_build_dir line.
-          #
-          # Insert ONE call immediately after it.
-          # -----------------------------------------------------
-
-          echo
           echo "===== Adding grp fixer call ====="
 
           python - <<'PY'
@@ -368,13 +270,6 @@ recipe.write_text(text)
 print("OK: grp fixer call inserted.")
 PY
 
-
-          # -----------------------------------------------------
-          # VERY IMPORTANT:
-          # Check Python syntax now.
-          # -----------------------------------------------------
-
-          echo
           echo "===== Checking Python recipe syntax ====="
 
           python -m py_compile \
@@ -382,12 +277,6 @@ PY
 
           echo "OK: Python recipe syntax is valid."
 
-
-          # -----------------------------------------------------
-          # Show the relevant section.
-          # -----------------------------------------------------
-
-          echo
           echo "===== Relevant Python recipe section ====="
 
           grep -n \
@@ -396,8 +285,6 @@ PY
             "recipe_build_dir" \
             "$P4A_PYTHON_RECIPE/__init__.py" || true
 
-
-          echo
           echo "===== Grp fixer definition ====="
 
           grep -n \
@@ -405,10 +292,6 @@ PY
             "_ee_inspector_fix_android_grp_source" \
             "$P4A_PYTHON_RECIPE/__init__.py" || true
 
-
-      # ---------------------------------------------------------
-      # 11. Verify Buildozer configuration
-      # ---------------------------------------------------------
       - name: Verify Buildozer configuration
         shell: bash
         run: |
@@ -420,8 +303,6 @@ PY
             '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.source_dir|p4a.local_recipes)' \
             buildozer.spec || true
 
-
-          echo
           echo "===== Local recipes ====="
 
           find recipes \
@@ -429,8 +310,6 @@ PY
             -type f \
             -print | sort
 
-
-          echo
           echo "===== Checking important requirements ====="
 
           grep -q "opencv" buildozer.spec
@@ -439,8 +318,6 @@ PY
           echo "OK: OpenCV requirement present."
           echo "OK: OpenCV Contrib requirement present."
 
-
-          echo
           echo "===== Checking Python recipe ====="
 
           if [ -f "recipes/python3/__init__.py" ]; then
@@ -450,10 +327,6 @@ PY
 
           echo "OK: official p4a Python recipe will be used."
 
-
-      # ---------------------------------------------------------
-      # 12. Inspect the recipe BEFORE Buildozer
-      # ---------------------------------------------------------
       - name: Inspect patched Python recipe
         shell: bash
         run: |
@@ -468,8 +341,6 @@ PY
             "version =" \
             "$PYTHON_RECIPE" | head -5
 
-
-          echo
           echo "===== grp fixer ====="
 
           grep -n \
@@ -477,18 +348,12 @@ PY
             "_fix_android_grp_source" \
             "$PYTHON_RECIPE"
 
-
-          echo
           echo "===== Recipe syntax check ====="
 
           python -m py_compile "$PYTHON_RECIPE"
 
           echo "OK: recipe compiles successfully."
 
-
-      # ---------------------------------------------------------
-      # 13. Build APK
-      # ---------------------------------------------------------
       - name: Build Android APK
         shell: bash
         env:
@@ -503,14 +368,9 @@ PY
 
           buildozer -v android debug
 
-
-      # ---------------------------------------------------------
-      # 14. Upload APK
-      # ---------------------------------------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ee-inspector-pro-apk
           path: bin/*.apk
           if-no-files-found: error
-```
