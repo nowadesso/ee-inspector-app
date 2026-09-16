@@ -56,7 +56,6 @@ jobs:
           java-version: "17"
 
       - name: Verify Java
-        shell: bash
         run: |
           set -e
 
@@ -116,7 +115,6 @@ jobs:
           git describe --tags --always || true
 
       - name: Prepare Python recipe
-        shell: bash
         run: |
           set -e
 
@@ -292,7 +290,6 @@ PY
             "$P4A_PYTHON_RECIPE/__init__.py" || true
 
       - name: Verify Buildozer configuration
-        shell: bash
         run: |
           set -e
 
@@ -327,7 +324,6 @@ PY
           echo "OK: official p4a Python recipe will be used."
 
       - name: Inspect patched Python recipe
-        shell: bash
         run: |
           set -e
 
@@ -354,7 +350,6 @@ PY
           echo "OK: recipe compiles successfully."
 
       - name: Build Android APK
-        shell: bash
         env:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
           PYTHONUNBUFFERED: "1"
