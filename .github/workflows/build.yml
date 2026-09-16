@@ -1,376 +1,376 @@
 name: Build EE Inspector Pro APK
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+workflow_dispatch:
+push:
+  branches:
+    - main
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
+build:
+  runs-on: ubuntu-22.04
 
-    steps:
+  steps:
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
 
-      - name: Install system dependencies
-        run: |
-          set -e
+    - name: Install system dependencies
+      run: |
+        set -e
 
-          sudo apt-get update
+        sudo apt-get update
 
-          sudo apt-get install -y \
-            git \
-            zip \
-            unzip \
-            openjdk-17-jdk \
-            autoconf \
-            automake \
-            libtool \
-            libltdl-dev \
-            pkg-config \
-            zlib1g-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            libtinfo6 \
-            cmake \
-            libffi-dev \
-            libssl-dev \
-            gettext \
-            autopoint \
-            curl \
-            wget \
-            patch \
-            build-essential
+        sudo apt-get install -y \
+          git \
+          zip \
+          unzip \
+          openjdk-17-jdk \
+          autoconf \
+          automake \
+          libtool \
+          libltdl-dev \
+          pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libtinfo6 \
+          cmake \
+          libffi-dev \
+          libssl-dev \
+          gettext \
+          autopoint \
+          curl \
+          wget \
+          patch \
+          build-essential
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
 
-      - name: Verify Java
-        shell: bash
-        run: |
-          set -e
+    - name: Verify Java
+      shell: bash
+      run: |
+        set -e
 
-          echo "===== Java environment ====="
-          echo "JAVA_HOME=$JAVA_HOME"
+        echo "===== Java environment ====="
+        echo "JAVA_HOME=$JAVA_HOME"
 
-          echo "===== java ====="
-          java -version
+        echo "===== java ====="
+        java -version
 
-          echo "===== javac ====="
-          javac -version
+        echo "===== javac ====="
+        javac -version
 
-      - name: Install Python build tools
-        run: |
-          set -e
+    - name: Install Python build tools
+      run: |
+        set -e
 
-          python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel
 
-          python -m pip install \
-            buildozer \
-            "cython<3.4"
+        python -m pip install \
+          buildozer \
+          "cython<3.4"
 
-      - name: Cache Buildozer
-        uses: actions/cache@v4
-        with:
-          path: |
-            .buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: |
-            buildozer-${{ runner.os }}-
+    - name: Cache Buildozer
+      uses: actions/cache@v4
+      with:
+        path: |
+          .buildozer
+        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+        restore-keys: |
+          buildozer-${{ runner.os }}-
 
-      - name: Remove stale python-for-android
-        run: |
-          set -e
+    - name: Remove stale python-for-android
+      run: |
+        set -e
 
-          rm -rf \
-            "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+        rm -rf \
+          "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
 
-      - name: Prepare python-for-android
-        run: |
-          set -e
+    - name: Prepare python-for-android
+      run: |
+        set -e
 
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+        P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
 
-          mkdir -p "$GITHUB_WORKSPACE/.buildozer/android/platform"
+        mkdir -p "$GITHUB_WORKSPACE/.buildozer/android/platform"
 
-          git clone \
-            --depth 1 \
-            --branch v2026.05.09 \
-            https://github.com/kivy/python-for-android.git \
-            "$P4A_DIR"
+        git clone \
+          --depth 1 \
+          --branch v2026.05.09 \
+          https://github.com/kivy/python-for-android.git \
+          "$P4A_DIR"
 
-          echo "===== python-for-android version ====="
+        echo "===== python-for-android version ====="
 
-          cd "$P4A_DIR"
+        cd "$P4A_DIR"
 
-          git describe --tags --always || true
+        git describe --tags --always || true
 
-      - name: Prepare Python recipe
-        shell: bash
-        run: |
-          set -e
+    - name: Prepare Python recipe
+      shell: bash
+      run: |
+        set -e
 
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          P4A_PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
-          LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
+        P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+        P4A_PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
+        LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
 
-          echo "===== P4A directory ====="
-          echo "$P4A_DIR"
+        echo "===== P4A directory ====="
+        echo "$P4A_DIR"
 
-          echo "===== Official Python recipe ====="
-          echo "$P4A_PYTHON_RECIPE"
+        echo "===== Official Python recipe ====="
+        echo "$P4A_PYTHON_RECIPE"
 
-          test -f "$P4A_PYTHON_RECIPE/__init__.py"
+        test -f "$P4A_PYTHON_RECIPE/__init__.py"
 
-          echo "OK: official Python recipe exists."
+        echo "OK: official Python recipe exists."
 
-          echo "===== Removing old disable_grp.patch ====="
+        echo "===== Removing old disable_grp.patch ====="
 
-          rm -f "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
-          rm -f "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
+        rm -f "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
+        rm -f "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
 
-          echo "===== Checking local python3 recipe ====="
+        echo "===== Checking local python3 recipe ====="
 
-          if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
-            echo "ERROR: recipes/python3/__init__.py must NOT exist."
-            exit 1
-          fi
+        if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
+          echo "ERROR: recipes/python3/__init__.py must NOT exist."
+          exit 1
+        fi
 
-          echo "OK: local recipes/python3/__init__.py is absent."
+        echo "OK: local recipes/python3/__init__.py is absent."
 
-          echo "===== Copying official Python patches ====="
+        echo "===== Copying official Python patches ====="
 
-          mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
+        mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
 
-          cp "$P4A_PYTHON_RECIPE/patches/"* \
-            "$LOCAL_PYTHON_RECIPE/patches/"
+        cp "$P4A_PYTHON_RECIPE/patches/"* \
+          "$LOCAL_PYTHON_RECIPE/patches/"
 
-          echo "===== Searching for recipe_build_dir ====="
+        echo "===== Searching for recipe_build_dir ====="
 
-          grep -n "recipe_build_dir" \
-            "$P4A_PYTHON_RECIPE/__init__.py" || true
+        grep -n "recipe_build_dir" \
+          "$P4A_PYTHON_RECIPE/__init__.py" || true
 
-          echo "===== Installing CPython grp fixer ====="
+        echo "===== Installing CPython grp fixer ====="
 
-          cat >> "$P4A_PYTHON_RECIPE/__init__.py" <<'PYFIX'
+        cat >> "$P4A_PYTHON_RECIPE/__init__.py" <<'PYFIX'
 
 # ---------------------------------------------------------
 # EE Inspector Pro Android grp compatibility fix
 # ---------------------------------------------------------
 
 def _ee_inspector_fix_android_grp_source(recipe_build_dir):
-    from pathlib import Path
+  from pathlib import Path
 
-    grp_file = (
-        Path(recipe_build_dir)
-        / "Modules"
-        / "grpmodule.c"
-    )
+  grp_file = (
+      Path(recipe_build_dir)
+      / "Modules"
+      / "grpmodule.c"
+  )
 
-    if not grp_file.is_file():
-        raise RuntimeError(
-            f"CPython grp source not found: {grp_file}"
-        )
+  if not grp_file.is_file():
+      raise RuntimeError(
+          f"CPython grp source not found: {grp_file}"
+      )
 
-    source = grp_file.read_text()
+  source = grp_file.read_text()
 
-    if "setgrent();" not in source:
-        print(
-            "EE Inspector Pro: grp source already fixed."
-        )
-        return
+  if "setgrent();" not in source:
+      print(
+          "EE Inspector Pro: grp source already fixed."
+      )
+      return
 
-    start = source.find("    setgrent();")
+  start = source.find("    setgrent();")
 
-    if start < 0:
-        raise RuntimeError(
-            "Could not locate setgrent() in grpmodule.c"
-        )
+  if start < 0:
+      raise RuntimeError(
+          "Could not locate setgrent() in grpmodule.c"
+      )
 
-    end = source.find(
-        "    return d;",
-        start
-    )
+  end = source.find(
+      "    return d;",
+      start
+  )
 
-    if end < 0:
-        raise RuntimeError(
-            "Could not locate return d; in grpmodule.c"
-        )
+  if end < 0:
+      raise RuntimeError(
+          "Could not locate return d; in grpmodule.c"
+      )
 
-    source = source[:start] + source[end:]
+  source = source[:start] + source[end:]
 
-    for name in (
-        "setgrent();",
-        "getgrent();",
-        "endgrent();",
-    ):
-        if name in source:
-            raise RuntimeError(
-                f"grp fix failed: {name} still exists"
-            )
+  for name in (
+      "setgrent();",
+      "getgrent();",
+      "endgrent();",
+  ):
+      if name in source:
+          raise RuntimeError(
+              f"grp fix failed: {name} still exists"
+          )
 
-    grp_file.write_text(source)
+  grp_file.write_text(source)
 
-    print(
-        "EE Inspector Pro: removed "
-        "setgrent/getgrent/endgrent "
-        "from Modules/grpmodule.c"
-    )
+  print(
+      "EE Inspector Pro: removed "
+      "setgrent/getgrent/endgrent "
+      "from Modules/grpmodule.c"
+  )
 
 PYFIX
 
-          echo "===== Adding grp fixer call ====="
+        echo "===== Adding grp fixer call ====="
 
-          python - <<'PY'
+        python - <<'PY'
 from pathlib import Path
 
 recipe = Path(
-    ".buildozer/android/platform/python-for-android/"
-    "pythonforandroid/recipes/python3/__init__.py"
+  ".buildozer/android/platform/python-for-android/"
+  "pythonforandroid/recipes/python3/__init__.py"
 )
 
 text = recipe.read_text()
 
 marker = (
-    "        recipe_build_dir = "
-    "self.get_build_dir(arch.arch)"
+  "        recipe_build_dir = "
+  "self.get_build_dir(arch.arch)"
 )
 
 call = (
-    "        "
-    "_ee_inspector_fix_android_grp_source("
-    "recipe_build_dir)"
+  "        "
+  "_ee_inspector_fix_android_grp_source("
+  "recipe_build_dir)"
 )
 
 if marker not in text:
-    raise SystemExit(
-        "ERROR: Could not find recipe_build_dir line."
-    )
+  raise SystemExit(
+      "ERROR: Could not find recipe_build_dir line."
+  )
 
 if call not in text:
-    text = text.replace(
-        marker,
-        marker + "\n" + call,
-        1
-    )
+  text = text.replace(
+      marker,
+      marker + "\n" + call,
+      1
+  )
 
 recipe.write_text(text)
 
 print("OK: grp fixer call inserted.")
 PY
 
-          echo "===== Checking Python recipe syntax ====="
+        echo "===== Checking Python recipe syntax ====="
 
-          python -m py_compile \
-            "$P4A_PYTHON_RECIPE/__init__.py"
+        python -m py_compile \
+          "$P4A_PYTHON_RECIPE/__init__.py"
 
-          echo "OK: Python recipe syntax is valid."
+        echo "OK: Python recipe syntax is valid."
 
-          echo "===== Relevant Python recipe section ====="
+        echo "===== Relevant Python recipe section ====="
 
-          grep -n \
-            -A25 \
-            -B8 \
-            "recipe_build_dir" \
-            "$P4A_PYTHON_RECIPE/__init__.py" || true
+        grep -n \
+          -A25 \
+          -B8 \
+          "recipe_build_dir" \
+          "$P4A_PYTHON_RECIPE/__init__.py" || true
 
-          echo "===== Grp fixer definition ====="
+        echo "===== Grp fixer definition ====="
 
-          grep -n \
-            -A45 \
-            "_ee_inspector_fix_android_grp_source" \
-            "$P4A_PYTHON_RECIPE/__init__.py" || true
+        grep -n \
+          -A45 \
+          "_ee_inspector_fix_android_grp_source" \
+          "$P4A_PYTHON_RECIPE/__init__.py" || true
 
-      - name: Verify Buildozer configuration
-        shell: bash
-        run: |
-          set -e
+    - name: Verify Buildozer configuration
+      shell: bash
+      run: |
+        set -e
 
-          echo "===== buildozer.spec ====="
+        echo "===== buildozer.spec ====="
 
-          grep -E \
-            '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.source_dir|p4a.local_recipes)' \
-            buildozer.spec || true
+        grep -E \
+          '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.source_dir|p4a.local_recipes)' \
+          buildozer.spec || true
 
-          echo "===== Local recipes ====="
+        echo "===== Local recipes ====="
 
-          find recipes \
-            -maxdepth 3 \
-            -type f \
-            -print | sort
+        find recipes \
+          -maxdepth 3 \
+          -type f \
+          -print | sort
 
-          echo "===== Checking important requirements ====="
+        echo "===== Checking important requirements ====="
 
-          grep -q "opencv" buildozer.spec
-          grep -q "opencv_extras" buildozer.spec
+        grep -q "opencv" buildozer.spec
+        grep -q "opencv_extras" buildozer.spec
 
-          echo "OK: OpenCV requirement present."
-          echo "OK: OpenCV Contrib requirement present."
+        echo "OK: OpenCV requirement present."
+        echo "OK: OpenCV Contrib requirement present."
 
-          echo "===== Checking Python recipe ====="
+        echo "===== Checking Python recipe ====="
 
-          if [ -f "recipes/python3/__init__.py" ]; then
-            echo "ERROR: local recipes/python3/__init__.py exists."
-            exit 1
-          fi
+        if [ -f "recipes/python3/__init__.py" ]; then
+          echo "ERROR: local recipes/python3/__init__.py exists."
+          exit 1
+        fi
 
-          echo "OK: official p4a Python recipe will be used."
+        echo "OK: official p4a Python recipe will be used."
 
-      - name: Inspect patched Python recipe
-        shell: bash
-        run: |
-          set -e
+    - name: Inspect patched Python recipe
+      shell: bash
+      run: |
+        set -e
 
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+        P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+        PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
 
-          echo "===== Python recipe version ====="
+        echo "===== Python recipe version ====="
 
-          grep -n \
-            "version =" \
-            "$PYTHON_RECIPE" | head -5
+        grep -n \
+          "version =" \
+          "$PYTHON_RECIPE" | head -5
 
-          echo "===== grp fixer ====="
+        echo "===== grp fixer ====="
 
-          grep -n \
-            -A50 \
-            "_fix_android_grp_source" \
-            "$PYTHON_RECIPE"
+        grep -n \
+          -A50 \
+          "_fix_android_grp_source" \
+          "$PYTHON_RECIPE"
 
-          echo "===== Recipe syntax check ====="
+        echo "===== Recipe syntax check ====="
 
-          python -m py_compile "$PYTHON_RECIPE"
+        python -m py_compile "$PYTHON_RECIPE"
 
-          echo "OK: recipe compiles successfully."
+        echo "OK: recipe compiles successfully."
 
-      - name: Build Android APK
-        shell: bash
-        env:
-          PIP_DISABLE_PIP_VERSION_CHECK: "1"
-          PYTHONUNBUFFERED: "1"
-        run: |
-          set -e
+    - name: Build Android APK
+      shell: bash
+      env:
+        PIP_DISABLE_PIP_VERSION_CHECK: "1"
+        PYTHONUNBUFFERED: "1"
+      run: |
+        set -e
 
-          echo "=========================================="
-          echo " Starting Buildozer Android build"
-          echo "=========================================="
+        echo "=========================================="
+        echo " Starting Buildozer Android build"
+        echo "=========================================="
 
-          buildozer -v android debug
+        buildozer -v android debug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ee-inspector-pro-apk
-          path: bin/*.apk
-          if-no-files-found: error
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: ee-inspector-pro-apk
+        path: bin/*.apk
+        if-no-files-found: error
