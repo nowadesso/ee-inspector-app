@@ -1,3 +1,4 @@
+```yaml
 name: Build EE Inspector Pro APK
 
 on:
@@ -63,7 +64,37 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 4. Install Buildozer / Cython
+      # 4. Set Java 17 for Gradle / Android build
+      # ---------------------------------------------------------
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+
+      # ---------------------------------------------------------
+      # 5. Verify Java
+      # ---------------------------------------------------------
+      - name: Verify Java
+        shell: bash
+        run: |
+          set -e
+
+          echo "===== Java environment ====="
+          echo "JAVA_HOME=$JAVA_HOME"
+
+          echo
+          echo "===== java ====="
+          java -version
+
+          echo
+          echo "===== javac ====="
+          javac -version
+
+
+      # ---------------------------------------------------------
+      # 6. Install Buildozer / Cython
       # ---------------------------------------------------------
       - name: Install Python build tools
         run: |
@@ -77,7 +108,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 5. Cache Buildozer files
+      # 7. Cache Buildozer files
       # ---------------------------------------------------------
       - name: Cache Buildozer
         uses: actions/cache@v4
@@ -90,7 +121,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 6. Remove stale python-for-android checkout
+      # 8. Remove stale python-for-android checkout
       # ---------------------------------------------------------
       - name: Remove stale python-for-android
         run: |
@@ -101,7 +132,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 7. Clone known python-for-android version
+      # 9. Clone known python-for-android version
       # ---------------------------------------------------------
       - name: Prepare python-for-android
         run: |
@@ -126,7 +157,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 8. Prepare official Python recipe
+      # 10. Prepare official Python recipe
       #
       # IMPORTANT:
       # We DO NOT use disable_grp.patch anymore.
@@ -224,70 +255,70 @@ jobs:
 
           cat >> "$P4A_PYTHON_RECIPE/__init__.py" <<'PYFIX'
 
-          # ---------------------------------------------------------
-          # EE Inspector Pro Android grp compatibility fix
-          # ---------------------------------------------------------
+# ---------------------------------------------------------
+# EE Inspector Pro Android grp compatibility fix
+# ---------------------------------------------------------
 
-          def _ee_inspector_fix_android_grp_source(recipe_build_dir):
-              from pathlib import Path
+def _ee_inspector_fix_android_grp_source(recipe_build_dir):
+    from pathlib import Path
 
-              grp_file = (
-                  Path(recipe_build_dir)
-                  / "Modules"
-                  / "grpmodule.c"
-              )
+    grp_file = (
+        Path(recipe_build_dir)
+        / "Modules"
+        / "grpmodule.c"
+    )
 
-              if not grp_file.is_file():
-                  raise RuntimeError(
-                      f"CPython grp source not found: {grp_file}"
-                  )
+    if not grp_file.is_file():
+        raise RuntimeError(
+            f"CPython grp source not found: {grp_file}"
+        )
 
-              source = grp_file.read_text()
+    source = grp_file.read_text()
 
-              if "setgrent();" not in source:
-                  print(
-                      "EE Inspector Pro: grp source already fixed."
-                  )
-                  return
+    if "setgrent();" not in source:
+        print(
+            "EE Inspector Pro: grp source already fixed."
+        )
+        return
 
-              start = source.find("    setgrent();")
+    start = source.find("    setgrent();")
 
-              if start < 0:
-                  raise RuntimeError(
-                      "Could not locate setgrent() in grpmodule.c"
-                  )
+    if start < 0:
+        raise RuntimeError(
+            "Could not locate setgrent() in grpmodule.c"
+        )
 
-              end = source.find(
-                  "    return d;",
-                  start
-              )
+    end = source.find(
+        "    return d;",
+        start
+    )
 
-              if end < 0:
-                  raise RuntimeError(
-                      "Could not locate return d; in grpmodule.c"
-                  )
+    if end < 0:
+        raise RuntimeError(
+            "Could not locate return d; in grpmodule.c"
+        )
 
-              source = source[:start] + source[end:]
+    source = source[:start] + source[end:]
 
-              for name in (
-                  "setgrent();",
-                  "getgrent();",
-                  "endgrent();",
-              ):
-                  if name in source:
-                      raise RuntimeError(
-                          f"grp fix failed: {name} still exists"
-                      )
+    for name in (
+        "setgrent();",
+        "getgrent();",
+        "endgrent();",
+    ):
+        if name in source:
+            raise RuntimeError(
+                f"grp fix failed: {name} still exists"
+            )
 
-              grp_file.write_text(source)
+    grp_file.write_text(source)
 
-              print(
-                  "EE Inspector Pro: removed "
-                  "setgrent/getgrent/endgrent "
-                  "from Modules/grpmodule.c"
-              )
+    print(
+        "EE Inspector Pro: removed "
+        "setgrent/getgrent/endgrent "
+        "from Modules/grpmodule.c"
+    )
 
-          PYFIX
+PYFIX
 
 
           # -----------------------------------------------------
@@ -300,42 +331,42 @@ jobs:
           echo "===== Adding grp fixer call ====="
 
           python - <<'PY'
-          from pathlib import Path
+from pathlib import Path
 
-          recipe = Path(
-              ".buildozer/android/platform/python-for-android/"
-              "pythonforandroid/recipes/python3/__init__.py"
-          )
+recipe = Path(
+    ".buildozer/android/platform/python-for-android/"
+    "pythonforandroid/recipes/python3/__init__.py"
+)
 
-          text = recipe.read_text()
+text = recipe.read_text()
 
-          marker = (
-              "        recipe_build_dir = "
-              "self.get_build_dir(arch.arch)"
-          )
+marker = (
+    "        recipe_build_dir = "
+    "self.get_build_dir(arch.arch)"
+)
 
-          call = (
-              "        "
-              "_ee_inspector_fix_android_grp_source("
-              "recipe_build_dir)"
-          )
+call = (
+    "        "
+    "_ee_inspector_fix_android_grp_source("
+    "recipe_build_dir)"
+)
 
-          if marker not in text:
-              raise SystemExit(
-                  "ERROR: Could not find recipe_build_dir line."
-              )
+if marker not in text:
+    raise SystemExit(
+        "ERROR: Could not find recipe_build_dir line."
+    )
 
-          if call not in text:
-              text = text.replace(
-                  marker,
-                  marker + "\n" + call,
-                  1
-              )
+if call not in text:
+    text = text.replace(
+        marker,
+        marker + "\n" + call,
+        1
+    )
 
-          recipe.write_text(text)
+recipe.write_text(text)
 
-          print("OK: grp fixer call inserted.")
-          PY
+print("OK: grp fixer call inserted.")
+PY
 
 
           # -----------------------------------------------------
@@ -376,7 +407,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 9. Verify Buildozer configuration
+      # 11. Verify Buildozer configuration
       # ---------------------------------------------------------
       - name: Verify Buildozer configuration
         shell: bash
@@ -421,7 +452,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 10. Inspect the recipe BEFORE Buildozer
+      # 12. Inspect the recipe BEFORE Buildozer
       # ---------------------------------------------------------
       - name: Inspect patched Python recipe
         shell: bash
@@ -456,7 +487,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 11. Build APK
+      # 13. Build APK
       # ---------------------------------------------------------
       - name: Build Android APK
         shell: bash
@@ -474,7 +505,7 @@ jobs:
 
 
       # ---------------------------------------------------------
-      # 12. Upload APK
+      # 14. Upload APK
       # ---------------------------------------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -482,3 +513,4 @@ jobs:
           name: ee-inspector-pro-apk
           path: bin/*.apk
           if-no-files-found: error
+```
