@@ -322,8 +322,7 @@ PY
           fi
 
           echo "OK: official p4a Python recipe will be used."
-
-      - name: Inspect patched Python recipe
+       - name: Inspect patched Python recipe
         run: |
           set -e
 
@@ -361,7 +360,6 @@ PY
           echo "=========================================="
 
           buildozer -v android debug --directory
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
