@@ -77,6 +77,7 @@ p4a.source_dir =.buildozer/android/platform/python-for-android
 # (list) requirements to include, for more information see
 #            https://github.com/kivy/python-for-android/blob/master/README.requirements.rst
 # p4a.requirements = python3,kivy,sqlite3,pyjnius,openssl,android
+p4a.requirements = pip==21.3.1
 # (str) Custom recipes path
 p4a.local_recipes = ./recipes
 
