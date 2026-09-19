@@ -48,8 +48,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-v3-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-v3-${{ runner.os }}-
+          key: buildozer-v4-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-v4-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -65,34 +65,112 @@ jobs:
           cd "$P4A_DIR"
           git describe --tags --always || true
 
-      - name: Allow implicit function declarations in CPython build
+      - name: Patch grpmodule.c source before CPython build
         run: |
           set -e
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
           RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
-          python - "$RECIPE" <<'PY'
-          import sys
+
+          # This helper runs at recipe build time: it finds grpmodule.c in the
+          # extracted CPython source tree and rewrites it to remove all
+          # setgrent/getgrent/endgrent calls, which Android does not provide.
+          cat > "$P4A_DIR/grp_fix_helper.py" <<'PYEOF'
           from pathlib import Path
-          p = Path(sys.argv[1])
-          s = p.read_text()
-          needle = "class Python3Recipe("
-          if needle not in s:
-              raise SystemExit("could not find class Python3Recipe in recipe")
-          inject = (
-              "\n    def get_recipe_env(self, arch, with_flags_in_cc=True):\n"
-              "        env = super().get_recipe_env(arch, with_flags_in_cc)\n"
-              "        env['CFLAGS'] = env.get('CFLAGS', '') + ' -Wno-implicit-function-declaration'\n"
-              "        env['CPPFLAGS'] = env.get('CPPFLAGS', '') + ' -Wno-implicit-function-declaration'\n"
-              "        return env\n"
-          )
-          idx = s.index(needle)
-          end_of_line = s.index("\n", idx) + 1
-          s = s[:end_of_line] + inject + s[end_of_line:]
-          p.write_text(s)
-          print("patched recipe:", p)
-          PY
+
+          def patch_grpmodule(build_dir):
+              grp = Path(build_dir) / "Modules" / "grpmodule.c"
+              if not grp.is_file():
+                  print("grpmodule.c not found at", grp)
+                  return
+              src = grp.read_text()
+
+              # Replace the whole grp_getgrall_impl body with a version that
+              # just returns an empty dict. This removes every reference to
+              # setgrent/getgrent/endgrent.
+              marker = "grp_getgrall_impl(PyObject *module)"
+              idx = src.find(marker)
+              if idx < 0:
+                  print("grp_getgrall_impl not found; nothing to do")
+                  return
+
+              # Find the opening brace of the function body
+              brace = src.find("{", idx)
+              if brace < 0:
+                  print("opening brace not found; nothing to do")
+                  return
+
+              # Find the matching closing brace by counting
+              depth = 0
+              end = -1
+              for i in range(brace, len(src)):
+                  c = src[i]
+                  if c == "{":
+                      depth += 1
+                  elif c == "}":
+                      depth -= 1
+                      if depth == 0:
+                          end = i + 1
+                          break
+              if end < 0:
+                  print("closing brace not found; nothing to do")
+                  return
+
+              replacement = (
+                  "grp_getgrall_impl(PyObject *module)\n"
+                  "{\n"
+                  "    PyObject *d = PyDict_New();\n"
+                  "    if (d == NULL)\n"
+                  "        return NULL;\n"
+                  "    return d;\n"
+                  "}"
+              )
+              src = src[:idx] + replacement + src[end:]
+              grp.write_text(src)
+              print("patched grpmodule.c:", grp)
+
+          if __name__ == "__main__":
+              import sys
+              patch_grpmodule(sys.argv[1])
+          PYEOF
+
+          echo "===== helper written ====="
+
+          # Now hook the helper into the recipe's build_arch method.
+          # We do this by appending a monkey-patch wrapper at the end of the
+          # recipe module that overrides build_arch and calls the helper first.
+          cat >> "$RECIPE" <<'PYRECIPE'
+
+          # --- EE Inspector Pro grpmodule.c patch ---
+          _ee_original_build_arch = Python3Recipe.build_arch
+
+          def _ee_patched_build_arch(self, arch):
+              import subprocess, sys
+              from pathlib import Path
+              build_dir = self.get_build_dir(arch.arch)
+              helper = Path(
+                  "/home/runner/work/ee-inspector-app/ee-inspector-app/"
+                  ".buildozer/android/platform/python-for-android/"
+                  "grp_fix_helper.py"
+              )
+              if helper.is_file():
+                  try:
+                      subprocess.check_call(
+                          [sys.executable, str(helper), str(build_dir)]
+                      )
+                  except Exception as e:
+                      print("grp patch helper failed:", e)
+              return _ee_original_build_arch(self, arch)
+
+          Python3Recipe.build_arch = _ee_patched_build_arch
+          PYRECIPE
+
+          echo "===== recipe patched ====="
+
           python -m py_compile "$RECIPE"
           echo "OK: recipe compiles."
+
+          echo "===== showing the hook ====="
+          tail -n 25 "$RECIPE"
 
       - name: Verify build configuration
         shell: bash
