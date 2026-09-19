@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-     - main
+      - main
 
 jobs:
   build:
@@ -12,20 +12,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install system dependencies
         run: |
           set -e
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf automake libtool libltdl-dev pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev gettext autopoint curl wget patch build-essential
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - name: Verify Java
         shell: bash
         run: |
@@ -33,21 +37,25 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
           javac -version
+
       - name: Install Python build tools
         run: |
           set -e
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install buildozer "cython<3.4"
+
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
           path: .buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
           restore-keys: buildozer-${{ runner.os }}-
+
       - name: Remove stale python-for-android
         run: |
           set -e
           rm -rf "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+
       - name: Prepare python-for-android
         run: |
           set -e
@@ -56,6 +64,7 @@ jobs:
           git clone --depth 1 --branch v2026.05.09 https://github.com/kivy/python-for-android.git "$P4A_DIR"
           cd "$P4A_DIR"
           git describe --tags --always || true
+
       - name: Prepare Python recipe
         shell: bash
         run: |
@@ -63,15 +72,24 @@ jobs:
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
           P4A_PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
           LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
+
           test -f "$P4A_PYTHON_RECIPE/__init__.py"
+
           rm -f "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
           rm -f "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
-          if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then echo "ERROR: recipes/python3/__init__.py must NOT exist."; exit 1; fi
+
+          if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
+            echo "ERROR: recipes/python3/__init__.py must NOT exist."
+            exit 1
+          fi
+
           mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
           cp "$P4A_PYTHON_RECIPE/patches/"* "$LOCAL_PYTHON_RECIPE/patches/"
-          cat >> "$P4A_PYTHON_RECIPE/__init__.py" <<'PYFIX'
-# EE Inspector Pro: Android Python grp compatibility fix
 
+          echo "===== Installing CPython grp fixer ====="
+
+          cat > /tmp/ee_grp_fixer.py <<'HELPER_EOF'
+# EE Inspector Pro: Android Python grp compatibility fix
 def _ee_inspector_fix_android_grp_source(recipe_build_dir):
     from pathlib import Path
     grp_file = Path(recipe_build_dir) / "Modules" / "grpmodule.c"
@@ -89,8 +107,13 @@ def _ee_inspector_fix_android_grp_source(recipe_build_dir):
         if name in source:
             raise RuntimeError(f"grp source fix incomplete: {name}")
     grp_file.write_text(source)
-PYFIX
-          python - <<'PY'
+HELPER_EOF
+
+          cat /tmp/ee_grp_fixer.py >> "$P4A_PYTHON_RECIPE/__init__.py"
+
+          echo "===== Adding grp fixer call ====="
+
+          cat > /tmp/ee_grp_inject.py <<'INJECT_EOF'
 from pathlib import Path
 recipe = Path(".buildozer/android/platform/python-for-android/pythonforandroid/recipes/python3/__init__.py")
 text = recipe.read_text()
@@ -102,8 +125,13 @@ if call not in text:
     text = text.replace(marker, marker + "\n" + call, 1)
 recipe.write_text(text)
 print("OK: grp fixer call inserted.")
-PY
+INJECT_EOF
+
+          python /tmp/ee_grp_inject.py
+
           python -m py_compile "$P4A_PYTHON_RECIPE/__init__.py"
+          echo "OK: Python recipe syntax is valid."
+
       - name: Verify build configuration
         shell: bash
         run: |
@@ -112,12 +140,14 @@ PY
           find recipes -maxdepth 3 -type f -print | sort
           test -f .github/workflows/build.yml
           echo "OK: .github/workflows/build.yml exists."
+
       - name: Inspect Python recipe
         shell: bash
         run: |
           set -e
           P4A_PYTHON_RECIPE="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/python3/__init__.py"
           grep -n -A4 -B4 "_ee_inspector_fix_android_grp_source" "$P4A_PYTHON_RECIPE" || true
+
       - name: Build Android APK
         shell: bash
         env:
@@ -126,6 +156,7 @@ PY
         run: |
           set -e
           buildozer -v android debug
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
