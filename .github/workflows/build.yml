@@ -48,8 +48,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-v2-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-v2-${{ runner.os }}-
+          key: buildozer-v3-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-v3-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -64,6 +64,35 @@ jobs:
           git clone --depth 1 https://github.com/kivy/python-for-android.git "$P4A_DIR"
           cd "$P4A_DIR"
           git describe --tags --always || true
+
+      - name: Allow implicit function declarations in CPython build
+        run: |
+          set -e
+          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+          python - "$RECIPE" <<'PY'
+          import sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          s = p.read_text()
+          needle = "class Python3Recipe("
+          if needle not in s:
+              raise SystemExit("could not find class Python3Recipe in recipe")
+          inject = (
+              "\n    def get_recipe_env(self, arch, with_flags_in_cc=True):\n"
+              "        env = super().get_recipe_env(arch, with_flags_in_cc)\n"
+              "        env['CFLAGS'] = env.get('CFLAGS', '') + ' -Wno-implicit-function-declaration'\n"
+              "        env['CPPFLAGS'] = env.get('CPPFLAGS', '') + ' -Wno-implicit-function-declaration'\n"
+              "        return env\n"
+          )
+          idx = s.index(needle)
+          end_of_line = s.index("\n", idx) + 1
+          s = s[:end_of_line] + inject + s[end_of_line:]
+          p.write_text(s)
+          print("patched recipe:", p)
+          PY
+          python -m py_compile "$RECIPE"
+          echo "OK: recipe compiles."
 
       - name: Verify build configuration
         shell: bash
