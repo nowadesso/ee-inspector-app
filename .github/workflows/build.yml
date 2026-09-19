@@ -65,7 +65,7 @@ jobs:
           cd "$P4A_DIR"
           git describe --tags --always || true
 
-            - name: Prepare Python recipe
+      - name: Prepare Python recipe
         shell: bash
         run: |
           set -e
