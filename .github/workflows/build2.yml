@@ -65,7 +65,7 @@ jobs:
           cd "$P4A_DIR"
           git describe --tags --always || true
 
-      - name: Prepare Python recipe
+            - name: Prepare Python recipe
         shell: bash
         run: |
           set -e
@@ -88,49 +88,52 @@ jobs:
 
           echo "===== Installing CPython grp fixer ====="
 
-          cat > /tmp/ee_grp_fixer.py <<'HELPER_EOF'
-# EE Inspector Pro: Android Python grp compatibility fix
-def _ee_inspector_fix_android_grp_source(recipe_build_dir):
-    from pathlib import Path
-    grp_file = Path(recipe_build_dir) / "Modules" / "grpmodule.c"
-    if not grp_file.is_file():
-        raise RuntimeError(f"grpmodule.c not found: {grp_file}")
-    source = grp_file.read_text()
-    if "setgrent();" not in source:
-        return
-    start = source.find("    setgrent();")
-    end = source.find("    return d;", start)
-    if start < 0 or end < 0:
-        raise RuntimeError("Could not locate grp enumeration block.")
-    source = source[:start] + source[end:]
-    for name in ("setgrent();", "getgrent();", "endgrent();"):
-        if name in source:
-            raise RuntimeError(f"grp source fix incomplete: {name}")
-    grp_file.write_text(source)
-HELPER_EOF
+          python -c "
+          from pathlib import Path
+          recipe = Path('$P4A_PYTHON_RECIPE/__init__.py')
+          text = recipe.read_text()
+          helper = '''
 
-          cat /tmp/ee_grp_fixer.py >> "$P4A_PYTHON_RECIPE/__init__.py"
+          # EE Inspector Pro: Android Python grp compatibility fix
+          def _ee_inspector_fix_android_grp_source(recipe_build_dir):
+              from pathlib import Path
+              grp_file = Path(recipe_build_dir) / \"Modules\" / \"grpmodule.c\"
+              if not grp_file.is_file():
+                  raise RuntimeError(f\"grpmodule.c not found: {grp_file}\")
+              source = grp_file.read_text()
+              if \"setgrent();\" not in source:
+                  return
+              start = source.find(\"    setgrent();\")
+              end = source.find(\"    return d;\", start)
+              if start < 0 or end < 0:
+                  raise RuntimeError(\"Could not locate grp enumeration block.\")
+              source = source[:start] + source[end:]
+              for name in (\"setgrent();\", \"getgrent();\", \"endgrent();\"):
+                  if name in source:
+                      raise RuntimeError(f\"grp source fix incomplete: {name}\")
+              grp_file.write_text(source)
+          '''
+          recipe.write_text(text + helper)
+          "
 
           echo "===== Adding grp fixer call ====="
 
-          cat > /tmp/ee_grp_inject.py <<'INJECT_EOF'
-from pathlib import Path
-recipe = Path(".buildozer/android/platform/python-for-android/pythonforandroid/recipes/python3/__init__.py")
-text = recipe.read_text()
-marker = "        recipe_build_dir = self.get_build_dir(arch.arch)"
-call = "        _ee_inspector_fix_android_grp_source(recipe_build_dir)"
-if marker not in text:
-    raise SystemExit("ERROR: Could not find recipe_build_dir line.")
-if call not in text:
-    text = text.replace(marker, marker + "\n" + call, 1)
-recipe.write_text(text)
-print("OK: grp fixer call inserted.")
-INJECT_EOF
-
-          python /tmp/ee_grp_inject.py
+          python -c "
+          from pathlib import Path
+          recipe = Path('$P4A_PYTHON_RECIPE/__init__.py')
+          text = recipe.read_text()
+          marker = '        recipe_build_dir = self.get_build_dir(arch.arch)'
+          call = '        _ee_inspector_fix_android_grp_source(recipe_build_dir)'
+          if marker not in text:
+              raise SystemExit('ERROR: Could not find recipe_build_dir line.')
+          if call not in text:
+              text = text.replace(marker, marker + '\n' + call, 1)
+          recipe.write_text(text)
+          print('OK: grp fixer call inserted.')
+          "
 
           python -m py_compile "$P4A_PYTHON_RECIPE/__init__.py"
-          echo "OK: Python recipe syntax is valid."
+          echo "OK: Python recipe syntax is valid.""
 
       - name: Verify build configuration
         shell: bash
