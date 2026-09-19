@@ -88,53 +88,18 @@ jobs:
 
           echo "===== Installing CPython grp fixer ====="
 
-          python -c "
-          from pathlib import Path
-          recipe = Path('$P4A_PYTHON_RECIPE/__init__.py')
-          text = recipe.read_text()
-          helper = '''
-
-          # EE Inspector Pro: Android Python grp compatibility fix
-          def _ee_inspector_fix_android_grp_source(recipe_build_dir):
-              from pathlib import Path
-              grp_file = Path(recipe_build_dir) / \"Modules\" / \"grpmodule.c\"
-              if not grp_file.is_file():
-                  raise RuntimeError(f\"grpmodule.c not found: {grp_file}\")
-              source = grp_file.read_text()
-              if \"setgrent();\" not in source:
-                  return
-              start = source.find(\"    setgrent();\")
-              end = source.find(\"    return d;\", start)
-              if start < 0 or end < 0:
-                  raise RuntimeError(\"Could not locate grp enumeration block.\")
-              source = source[:start] + source[end:]
-              for name in (\"setgrent();\", \"getgrent();\", \"endgrent();\"):
-                  if name in source:
-                      raise RuntimeError(f\"grp source fix incomplete: {name}\")
-              grp_file.write_text(source)
-          '''
-          recipe.write_text(text + helper)
-          "
+          echo 'I2VkZ2VJbnNwZWN0b3JQcm86IEFuZHJvaWQgUHl0aG9uIGdycCBjb21wYXRpYmlsaXR5IGZpeAoKZGVmIF9lZV9pbnNwZWN0b3JfZml4X2FuZHJvaWRfZ3JwX3NvdXJjZShyZWNpcGVfYnVpbGRfZGlyKToKICAgIGZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAogICAgZ3JwX2ZpbGUgPSBQYXRoKHJlY2lwZV9idWlsZF9kaXIpIC8gIk1vZHVsZXMiIC8gImdycG1vZHVsZS5jIgogICAgaWYgbm90IGdycF9maWxlLmlzX2ZpbGUoKToKICAgICAgICByYWlzZSBSdW50aW1lRXJyb3IoZiJncnBtb2R1bGUuYyBub3QgZm91bmQ6IHtncnBfZmlsZX0iKQogICAgc291cmNlID0gZ3JwX2ZpbGUucmVhZF90ZXh0KCkKICAgIGlmICJzZXRncmVudCgpOyIgbm90IGluIHNvdXJjZToKICAgICAgICByZXR1cm4KICAgIHN0YXJ0ID0gc291cmNlLmZpbmQoIiAgICBzZXRncmVudCgpOyIpCiAgICBlbmQgPSBzb3VyY2UuZmluZCgiICAgIHJldHVybiBkOyIsIHN0YXJ0KQogICAgaWYgc3RhcnQgPCAwIG9yIGVuZCA8IDA6CiAgICAgICAgcmFpc2UgUnVudGltZUVycm9yKCJDb3VsZCBub3QgbG9jYXRlIGdycCBlbnVtZXJhdGlvbiBibG9jay4iKQogICAgc291cmNlID0gc291cmNlWzpzdGFydF0gKyBzb3VyY2VbZW5kOl0KICAgIGZvciBuYW1lIGluICgic2V0Z3JlbnQoKTsiLCAiZ2V0Z3JlbnQoKTsiLCAiZW5kZ3JlbnQoKTsiKToKICAgICAgICBpZiBuYW1lIGluIHNvdXJjZToKICAgICAgICAgICAgcmFpc2UgUnVudGltZUVycm9yKGYiZ3JwIHNvdXJjZSBmaXggaW5jb21wbGV0ZToge25hbWV9IikKICAgIGdycF9maWxlLndyaXRlX3RleHQoc291cmNlKQo=' \
+            | base64 -d >> "$P4A_PYTHON_RECIPE/__init__.py"
 
           echo "===== Adding grp fixer call ====="
 
-          python -c "
-          from pathlib import Path
-          recipe = Path('$P4A_PYTHON_RECIPE/__init__.py')
-          text = recipe.read_text()
-          marker = '        recipe_build_dir = self.get_build_dir(arch.arch)'
-          call = '        _ee_inspector_fix_android_grp_source(recipe_build_dir)'
-          if marker not in text:
-              raise SystemExit('ERROR: Could not find recipe_build_dir line.')
-          if call not in text:
-              text = text.replace(marker, marker + '\n' + call, 1)
-          recipe.write_text(text)
-          print('OK: grp fixer call inserted.')
-          "
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnJlY2lwZSA9IFBhdGgoIi5idWlsZG96ZXIvYW5kcm9pZC9wbGF0Zm9ybS9weXRob24tZm9yLWFuZHJvaWQvcHl0aG9uZm9yYW5kcm9pZC9yZWNpcGVzL3B5dGhvbjMvX19pbml0X18ucHkiKQp0ZXh0ID0gcmVjaXBlLnJlYWRfdGV4dCgpCm1hcmtlciA9ICIgICAgICAgIHJlY2lwZV9idWlsZF9kaXIgPSBzZWxmLmdldF9idWlsZF9kaXIoYXJjaC5hcmNoKSIKY2FsbCA9ICIgICAgICAgIF9lZV9pbnNwZWN0b3JfZml4X2FuZHJvaWRfZ3JwX3NvdXJjZShyZWNpcGVfYnVpbGRfZGlyKSIKaWYgbWFya2VyIG5vdCBpbiB0ZXh0OgogICAgcmFpc2UgU3lzdGVtRXhpdCgiRVJST1I6IENvdWxkIG5vdCBmaW5kIHJlY2lwZV9idWlsZF9kaXIgbGluZS4iKQppZiBjYWxsIG5vdCBpbiB0ZXh0OgogICAgdGV4dCA9IHRleHQucmVwbGFjZShtYXJrZXIsIG1hcmtlciArICJcbiIgKyBjYWxsLCAxKQpyZWNpcGUud3JpdGVfdGV4dCh0ZXh0KQpwcmludCgiT0s6IGdycCBmaXhlciBjYWxsIGluc2VydGVkLiIpCg==' \
+            | base64 -d > /tmp/ee_grp_inject.py
+
+          python /tmp/ee_grp_inject.py
 
           python -m py_compile "$P4A_PYTHON_RECIPE/__init__.py"
-          echo "OK: Python recipe syntax is valid.""
-
+          echo "OK: Python recipe syntax is valid."
       - name: Verify build configuration
         shell: bash
         run: |
