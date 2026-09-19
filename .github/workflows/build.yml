@@ -1,6 +1,6 @@
 name: "Build EE Inspector Pro APK"
 
-'on':
+on:
   workflow_dispatch:
   push:
     branches:
