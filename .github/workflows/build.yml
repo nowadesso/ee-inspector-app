@@ -48,8 +48,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-${{ runner.os }}-
+          key: buildozer-v2-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-v2-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -61,45 +61,10 @@ jobs:
           set -e
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
           mkdir -p "$GITHUB_WORKSPACE/.buildozer/android/platform"
-          git clone --depth 1 --branch v2026.05.09 https://github.com/kivy/python-for-android.git "$P4A_DIR"
+          git clone --depth 1 https://github.com/kivy/python-for-android.git "$P4A_DIR"
           cd "$P4A_DIR"
           git describe --tags --always || true
 
-      - name: Prepare Python recipe
-        shell: bash
-        run: |
-          set -e
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          P4A_PYTHON_RECIPE="$P4A_DIR/pythonforandroid/recipes/python3"
-          LOCAL_PYTHON_RECIPE="$GITHUB_WORKSPACE/recipes/python3"
-
-          test -f "$P4A_PYTHON_RECIPE/__init__.py"
-
-          rm -f "$LOCAL_PYTHON_RECIPE/patches/disable_grp.patch"
-          rm -f "$P4A_PYTHON_RECIPE/patches/disable_grp.patch"
-
-          if [ -f "$LOCAL_PYTHON_RECIPE/__init__.py" ]; then
-            echo "ERROR: recipes/python3/__init__.py must NOT exist."
-            exit 1
-          fi
-
-          mkdir -p "$LOCAL_PYTHON_RECIPE/patches"
-          cp "$P4A_PYTHON_RECIPE/patches/"* "$LOCAL_PYTHON_RECIPE/patches/"
-
-          echo "===== Installing CPython grp fixer ====="
-
-          echo 'I2VkZ2VJbnNwZWN0b3JQcm86IEFuZHJvaWQgUHl0aG9uIGdycCBjb21wYXRpYmlsaXR5IGZpeAoKZGVmIF9lZV9pbnNwZWN0b3JfZml4X2FuZHJvaWRfZ3JwX3NvdXJjZShyZWNpcGVfYnVpbGRfZGlyKToKICAgIGZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAogICAgZ3JwX2ZpbGUgPSBQYXRoKHJlY2lwZV9idWlsZF9kaXIpIC8gIk1vZHVsZXMiIC8gImdycG1vZHVsZS5jIgogICAgaWYgbm90IGdycF9maWxlLmlzX2ZpbGUoKToKICAgICAgICByYWlzZSBSdW50aW1lRXJyb3IoZiJncnBtb2R1bGUuYyBub3QgZm91bmQ6IHtncnBfZmlsZX0iKQogICAgc291cmNlID0gZ3JwX2ZpbGUucmVhZF90ZXh0KCkKICAgIGlmICJzZXRncmVudCgpOyIgbm90IGluIHNvdXJjZToKICAgICAgICByZXR1cm4KICAgIHN0YXJ0ID0gc291cmNlLmZpbmQoIiAgICBzZXRncmVudCgpOyIpCiAgICBlbmQgPSBzb3VyY2UuZmluZCgiICAgIHJldHVybiBkOyIsIHN0YXJ0KQogICAgaWYgc3RhcnQgPCAwIG9yIGVuZCA8IDA6CiAgICAgICAgcmFpc2UgUnVudGltZUVycm9yKCJDb3VsZCBub3QgbG9jYXRlIGdycCBlbnVtZXJhdGlvbiBibG9jay4iKQogICAgc291cmNlID0gc291cmNlWzpzdGFydF0gKyBzb3VyY2VbZW5kOl0KICAgIGZvciBuYW1lIGluICgic2V0Z3JlbnQoKTsiLCAiZ2V0Z3JlbnQoKTsiLCAiZW5kZ3JlbnQoKTsiKToKICAgICAgICBpZiBuYW1lIGluIHNvdXJjZToKICAgICAgICAgICAgcmFpc2UgUnVudGltZUVycm9yKGYiZ3JwIHNvdXJjZSBmaXggaW5jb21wbGV0ZToge25hbWV9IikKICAgIGdycF9maWxlLndyaXRlX3RleHQoc291cmNlKQo=' \
-            | base64 -d >> "$P4A_PYTHON_RECIPE/__init__.py"
-
-          echo "===== Adding grp fixer call ====="
-
-          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnJlY2lwZSA9IFBhdGgoIi5idWlsZG96ZXIvYW5kcm9pZC9wbGF0Zm9ybS9weXRob24tZm9yLWFuZHJvaWQvcHl0aG9uZm9yYW5kcm9pZC9yZWNpcGVzL3B5dGhvbjMvX19pbml0X18ucHkiKQp0ZXh0ID0gcmVjaXBlLnJlYWRfdGV4dCgpCm1hcmtlciA9ICIgICAgICAgIHJlY2lwZV9idWlsZF9kaXIgPSBzZWxmLmdldF9idWlsZF9kaXIoYXJjaC5hcmNoKSIKY2FsbCA9ICIgICAgICAgIF9lZV9pbnNwZWN0b3JfZml4X2FuZHJvaWRfZ3JwX3NvdXJjZShyZWNpcGVfYnVpbGRfZGlyKSIKaWYgbWFya2VyIG5vdCBpbiB0ZXh0OgogICAgcmFpc2UgU3lzdGVtRXhpdCgiRVJST1I6IENvdWxkIG5vdCBmaW5kIHJlY2lwZV9idWlsZF9kaXIgbGluZS4iKQppZiBjYWxsIG5vdCBpbiB0ZXh0OgogICAgdGV4dCA9IHRleHQucmVwbGFjZShtYXJrZXIsIG1hcmtlciArICJcbiIgKyBjYWxsLCAxKQpyZWNpcGUud3JpdGVfdGV4dCh0ZXh0KQpwcmludCgiT0s6IGdycCBmaXhlciBjYWxsIGluc2VydGVkLiIpCg==' \
-            | base64 -d > /tmp/ee_grp_inject.py
-
-          python /tmp/ee_grp_inject.py
-
-          python -m py_compile "$P4A_PYTHON_RECIPE/__init__.py"
-          echo "OK: Python recipe syntax is valid."
       - name: Verify build configuration
         shell: bash
         run: |
@@ -108,13 +73,6 @@ jobs:
           find recipes -maxdepth 3 -type f -print | sort
           test -f .github/workflows/build.yml
           echo "OK: .github/workflows/build.yml exists."
-
-      - name: Inspect Python recipe
-        shell: bash
-        run: |
-          set -e
-          P4A_PYTHON_RECIPE="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/python3/__init__.py"
-          grep -n -A4 -B4 "_ee_inspector_fix_android_grp_source" "$P4A_PYTHON_RECIPE" || true
 
       - name: Build Android APK
         shell: bash
