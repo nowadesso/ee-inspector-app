@@ -79,6 +79,18 @@ jobs:
           find recipes -maxdepth 3 -type f -print | sort
           test -f .github/workflows/build.yml
           echo "OK: .github/workflows/build.yml exists."
+      
+      - name: Show buildozer.spec
+        run: |
+          set -e
+          echo "===== working dir ====="
+          pwd
+          echo "===== buildozer.spec location ====="
+          ls -la buildozer.spec
+          echo "===== p4a.local_recipes line ====="
+          grep -n "local_recipes" buildozer.spec
+          echo "===== recipes tree ====="
+          find recipes -maxdepth 3 -type f -print 2>/dev/null || echo "recipes/ not found"   
 
       - name: Build Android APK
         shell: bash
