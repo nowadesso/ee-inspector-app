@@ -6,17 +6,15 @@ from pythonforandroid.recipes.python3 import Python3Recipe as _Base
 
 
 class Python3Recipe(_Base):
-    """Local override of the p4a python3 recipe."""
+    """Local override: disable readline, patch grpmodule.c."""
 
-    # Clear the inherited patch list — we ship no patch files.
     patches = []
 
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
-
         build_dir = Path(self.get_build_dir(arch.arch))
 
-        # 1. Comment out lzma and readline entries in every Setup file
+        # Disable readline only (lzma is handled by the liblzma recipe).
         for name in ("Setup", "Setup.dist", "Setup.local"):
             setup_path = build_dir / "Modules" / name
             if not setup_path.is_file():
@@ -24,15 +22,14 @@ class Python3Recipe(_Base):
             lines = setup_path.read_text().splitlines()
             out = []
             for line in lines:
-                stripped = line.strip()
-                if stripped.startswith("lzma ") or stripped.startswith("readline "):
+                if line.strip().startswith("readline "):
                     out.append("# disabled by ee-inspector: " + line)
                 else:
                     out.append(line)
             setup_path.write_text("\n".join(out) + "\n")
             print(f"EE Inspector Pro: sanitized Modules/{name}")
 
-        # 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent
+        # Patch grpmodule.c
         grp_file = build_dir / "Modules" / "grpmodule.c"
         if grp_file.is_file():
             src = grp_file.read_text()
