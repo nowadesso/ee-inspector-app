@@ -5,31 +5,25 @@ from pathlib import Path
 from pythonforandroid.recipes.python3 import Python3Recipe as _Base
 
 
+# ---------------------------------------------------------
+# Add --without-readline to the configure args so CPython's
+# ./configure disables the readline module entirely. This
+# prevents the Makefile from even trying to compile it.
+# ---------------------------------------------------------
+_Base.configure_args = list(_Base.configure_args) + ['--without-readline']
+
+
 class Python3Recipe(_Base):
-    """Local override: disable readline, patch grpmodule.c."""
+    """Local override: patch grpmodule.c on Android."""
 
     patches = []
 
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
+
         build_dir = Path(self.get_build_dir(arch.arch))
 
-        # Disable readline only (lzma is handled by the liblzma recipe).
-        for name in ("Setup", "Setup.dist", "Setup.local"):
-            setup_path = build_dir / "Modules" / name
-            if not setup_path.is_file():
-                continue
-            lines = setup_path.read_text().splitlines()
-            out = []
-            for line in lines:
-                if line.strip().startswith("readline "):
-                    out.append("# disabled by ee-inspector: " + line)
-                else:
-                    out.append(line)
-            setup_path.write_text("\n".join(out) + "\n")
-            print(f"EE Inspector Pro: sanitized Modules/{name}")
-
-        # Patch grpmodule.c
+        # Patch grpmodule.c to remove setgrent/getgrent/endgrent
         grp_file = build_dir / "Modules" / "grpmodule.c"
         if grp_file.is_file():
             src = grp_file.read_text()
