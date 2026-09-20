@@ -10,8 +10,13 @@ from pythonforandroid.recipes.python3 import Python3Recipe as _Base
 # ./configure disables the readline module entirely. This
 # prevents the Makefile from even trying to compile it.
 # ---------------------------------------------------------
-_Base.configure_args = list(_Base.configure_args) + ['--without-readline']
-
+#_Base.configure_args = list(_Base.configure_args) + ['--without-readline']
+_Base.configure_args = list(_Base.configure_args) + [
+    '--without-readline',
+    '--without-curses',
+    '--without-panel',
+    '--without-terminfo',
+]
 
 class Python3Recipe(_Base):
     """Local override: patch grpmodule.c on Android."""
