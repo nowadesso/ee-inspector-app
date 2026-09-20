@@ -1,13 +1,11 @@
 """EE Inspector Pro local Python 3 recipe.
 
-This recipe wraps the official p4a Python3Recipe and disables the
-lzma and readline modules, which cannot be compiled against the
-Android NDK without extra libraries. It also patches grpmodule.c
-to remove calls to setgrent/getgrent/endgrent that Android's bionic
-libc does not provide.
+Wraps the official p4a Python3Recipe and disables the lzma and readline
+modules, which cannot be compiled against the Android NDK without extra
+system libraries. Also patches grpmodule.c to remove calls to
+setgrent/getgrent/endgrent that Android's bionic libc does not provide.
 """
 
-from os.path import join
 from pathlib import Path
 
 from pythonforandroid.recipes.python3 import Python3Recipe as _Base
@@ -19,28 +17,27 @@ class Python3Recipe(_Base):
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
 
-        build_dir = self.get_build_dir(arch.arch)
+        build_dir = Path(self.get_build_dir(arch.arch))
 
-        # --- 1. Strip out the "lzma lzma.c" and "readline readline.c"
-        #        entries from every Setup file so the makefile never
-        #        tries to build them.
+        # 1. Comment out lzma and readline entries in every Setup file
+        #    so the generated Makefile never tries to build them.
         for name in ("Setup", "Setup.dist", "Setup.local"):
-            setup_path = Path(build_dir) / "Modules" / name
+            setup_path = build_dir / "Modules" / name
             if not setup_path.is_file():
                 continue
-            text = setup_path.read_text()
-            new_lines = []
-            for line in text.splitlines():
+            lines = setup_path.read_text().splitlines()
+            out = []
+            for line in lines:
                 stripped = line.strip()
                 if stripped.startswith("lzma ") or stripped.startswith("readline "):
-                    new_lines.append("# disabled by ee-inspector: " + line)
+                    out.append("# disabled by ee-inspector: " + line)
                 else:
-                    new_lines.append(line)
-            setup_path.write_text("\n".join(new_lines) + "\n")
+                    out.append(line)
+            setup_path.write_text("\n".join(out) + "\n")
             print(f"EE Inspector Pro: sanitized Modules/{name}")
 
-        # --- 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent.
-        grp_file = Path(build_dir) / "Modules" / "grpmodule.c"
+        # 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent.
+        grp_file = build_dir / "Modules" / "grpmodule.c"
         if grp_file.is_file():
             src = grp_file.read_text()
             marker = "grp_getgrall_impl(PyObject *module)"
@@ -73,5 +70,6 @@ class Python3Recipe(_Base):
                         grp_file.write_text(src)
                         print("EE Inspector Pro: patched grpmodule.c")
 
-    def build_arch(self, arch):
-        super().build_arch(arch)
+
+# p4a requires this module-level name to be defined.
+recipe = Python3Recipe()
