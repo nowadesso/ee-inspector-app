@@ -1,10 +1,4 @@
-"""EE Inspector Pro local Python 3 recipe.
-
-Wraps the official p4a Python3Recipe and disables the lzma and readline
-modules, which cannot be compiled against the Android NDK without extra
-system libraries. Also patches grpmodule.c to remove calls to
-setgrent/getgrent/endgrent that Android's bionic libc does not provide.
-"""
+"""EE Inspector Pro local Python 3 recipe."""
 
 from pathlib import Path
 
@@ -14,13 +8,15 @@ from pythonforandroid.recipes.python3 import Python3Recipe as _Base
 class Python3Recipe(_Base):
     """Local override of the p4a python3 recipe."""
 
+    # Clear the inherited patch list — we ship no patch files.
+    patches = []
+
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
 
         build_dir = Path(self.get_build_dir(arch.arch))
 
         # 1. Comment out lzma and readline entries in every Setup file
-        #    so the generated Makefile never tries to build them.
         for name in ("Setup", "Setup.dist", "Setup.local"):
             setup_path = build_dir / "Modules" / name
             if not setup_path.is_file():
@@ -36,7 +32,7 @@ class Python3Recipe(_Base):
             setup_path.write_text("\n".join(out) + "\n")
             print(f"EE Inspector Pro: sanitized Modules/{name}")
 
-        # 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent.
+        # 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent
         grp_file = build_dir / "Modules" / "grpmodule.c"
         if grp_file.is_file():
             src = grp_file.read_text()
@@ -71,5 +67,4 @@ class Python3Recipe(_Base):
                         print("EE Inspector Pro: patched grpmodule.c")
 
 
-# p4a requires this module-level name to be defined.
 recipe = Python3Recipe()
