@@ -74,8 +74,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-no-readline-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-no-readline-${{ runner.os }}-
+          key: buildozer-final-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-final-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -167,6 +167,43 @@ jobs:
           # We do this by appending a monkey-patch wrapper at the end of the
           # recipe module that overrides build_arch and calls the helper first.
           cat >> "$RECIPE" <<'PYRECIPE'
+
+      - name: Disable optional modules in CPython build
+        run: |
+          set -e
+          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+
+          cat >> "$RECIPE" <<'PYRECIPE'
+
+          # --- EE Inspector Pro: disable optional modules that don't build on Android ---
+          _ee_original_build_arch_3 = Python3Recipe.build_arch
+
+          def _ee_patched_build_arch_optional(self, arch):
+              import os
+              build_dir = self.get_build_dir(arch.arch)
+              setup = os.path.join(build_dir, "Modules", "Setup")
+              if os.path.isfile(setup):
+                  with open(setup) as f:
+                      text = f.read()
+                  # Disable lzma, readline, and other modules that fail cross-compilation
+                  for mod in ("readline", "lzma"):
+                      text = text.replace(
+                          f"{mod} {mod}.c",
+                          f"*disabled*\n# {mod} {mod}.c"
+                      )
+                  # Also handle the actual setup line format
+                  text = text.replace("readline readline.c", "*disabled*")
+                  text = text.replace("lzma lzma.c", "*disabled*")
+                  with open(setup, "w") as f:
+                      f.write(text)
+              return _ee_original_build_arch_3(self, arch)
+
+          Python3Recipe.build_arch = _ee_patched_build_arch_optional
+          PYRECIPE
+
+          python -m py_compile "$RECIPE"
+          echo "OK: optional module disable hook installed."
 
           # --- EE Inspector Pro grpmodule.c patch ---
           _ee_original_build_arch = Python3Recipe.build_arch
