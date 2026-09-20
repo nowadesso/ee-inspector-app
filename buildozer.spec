@@ -10,7 +10,8 @@ source.include_dirs =
 
 version = 0.1
 
-requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.1,https://github.com/kivymd/KivyMD/archive/refs/tags/2.0.0.zip,materialyoucolor==3.0.3,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras
+requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.1,https://github.com/kivymd/KivyMD/archive/refs/tags/2.0.0.zip,materialyoucolor==3.0.3,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras,liblzma
+#requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.1,https://github.com/kivymd/KivyMD/archive/refs/tags/2.0.0.zip,materialyoucolor==3.0.3,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras
 
 orientation = portrait
 fullscreen = 0
