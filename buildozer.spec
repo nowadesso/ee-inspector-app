@@ -17,8 +17,6 @@ version = 0.1
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
 requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.1,https://github.com/kivymd/KivyMD/archive/refs/tags/2.0.0.zip,materialyoucolor==3.0.3,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras
-#requirements = python3,kivy,KivyMD,materialyoucolor,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras,liblzma
-#requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.1,https://github.com/kivymd/KivyMD/archive/refs/tags/2.0.0.zip,materialyoucolor==3.0.3,materialshapes,pycairo,pillow,exceptiongroup,asyncgui,asynckivy,android,requests,numpy,opencv,opencv_extras
 
 orientation = portrait
 osx.python_version = 3
@@ -81,7 +79,7 @@ p4a.source_dir =.buildozer/android/platform/python-for-android
 # p4a.requirements = python3,kivy,sqlite3,pyjnius,openssl,android
 p4a.requirements = pip==21.3.1
 # (str) Custom recipes path
-p4a.local_recipes = ./recipes
+p4a.local_recipes =  ../../../../recipes
 
 [buildozer]
 
