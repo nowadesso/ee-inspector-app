@@ -48,8 +48,8 @@ jobs:
             patch \
             build-essential \
             liblzma-dev \
-            libreadline-dev
-            
+    
+          
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
@@ -74,8 +74,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-clean-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-clean-${{ runner.os }}-
+          key: buildozer-no-readline-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-no-readline-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -199,6 +199,41 @@ jobs:
 
           echo "===== showing the hook ====="
           tail -n 25 "$RECIPE"
+                
+      - name: Disable readline module in CPython build
+        run: |
+          set -e
+          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
+          RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
+
+          cat >> "$RECIPE" <<'PYRECIPE'
+
+          # --- EE Inspector Pro: disable readline module ---
+          _ee_original_build_arch_2 = Python3Recipe.build_arch
+
+          def _ee_patched_build_arch_readline(self, arch):
+              import os
+              build_dir = self.get_build_dir(arch.arch)
+              # Remove readline.c from the module list so CPython's Makefile
+              # never tries to compile it. Android has no readline support
+              # and the header is not in the NDK sysroot.
+              setup = os.path.join(build_dir, "Modules", "Setup")
+              if os.path.isfile(setup):
+                  with open(setup) as f:
+                      text = f.read()
+                  text = text.replace(
+                      "readline readline.c -lreadline -ltermcap",
+                      "*disabled*"
+                  )
+                  with open(setup, "w") as f:
+                      f.write(text)
+              return _ee_original_build_arch_2(self, arch)
+
+          Python3Recipe.build_arch = _ee_patched_build_arch_readline
+          PYRECIPE
+
+          python -m py_compile "$RECIPE"
+          echo "OK: readline disable hook installed."
 
       - name: Verify build configuration
         shell: bash
