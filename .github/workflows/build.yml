@@ -79,7 +79,13 @@ jobs:
           echo "===== p4a.local_recipes line ====="
           grep -n "local_recipes" buildozer.spec
           echo "===== recipes tree ====="
-          find recipes -maxdepth 3 -type f -print 2>/dev/null || echo "recipes/ not found"   
+          find recipes -maxdepth 3 -type f -print 2>/dev/null || echo "recipes/ not found"  
+                
+      - name: Set absolute local recipes path
+        run: |
+          set -e
+          echo "P4A_LOCAL_RECIPES=$GITHUB_WORKSPACE/recipes" >> "$GITHUB_ENV"
+          echo "Set P4A_LOCAL_RECIPES to $GITHUB_WORKSPACE/recipes"
 
       - name: Build Android APK
         shell: bash
@@ -88,8 +94,11 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -e
+          # Override the broken relative path with an absolute one
+          sed -i "s|^p4a.local_recipes = .*|p4a.local_recipes = $GITHUB_WORKSPACE/recipes|" buildozer.spec
+          grep "p4a.local_recipes" buildozer.spec
           buildozer -v android debug
-
+      
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
