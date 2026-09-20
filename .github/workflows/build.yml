@@ -93,12 +93,10 @@ jobs:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
           PYTHONUNBUFFERED: "1"
         run: |
-          set +e
-          buildozer -v android debug 2>&1 | tee build.log
-          status=${PIPESTATUS[0]}
-          echo "===== LAST 100 LINES OF BUILD LOG ====="
-          tail -n 100 build.log
-          exit $status
+          set -e
+          sed -i "s|^p4a.local_recipes = .*|p4a.local_recipes = $GITHUB_WORKSPACE/recipes|" buildozer.spec
+          grep "p4a.local_recipes" buildozer.spec
+          buildozer -v android debug
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
