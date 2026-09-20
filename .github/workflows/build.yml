@@ -60,17 +60,6 @@ jobs:
           set -e
           rm -rf "$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
 
-      - name: Prepare python-for-android
-        run: |
-          set -e
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          mkdir -p "$GITHUB_WORKSPACE/.buildozer/android/platform"
-          git clone --depth 1 --branch v2024.01.21 \
-            https://github.com/kivy/python-for-android.git \
-            "$P4A_DIR"
-          cd "$P4A_DIR"
-          git describe --tags --always || true
-
       - name: Verify build configuration
         shell: bash
         run: |
