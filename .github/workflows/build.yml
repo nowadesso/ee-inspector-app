@@ -52,8 +52,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-v6-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: buildozer-v6-${{ runner.os }}-
+          key: buildozer-v7-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: buildozer-v7-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -70,82 +70,6 @@ jobs:
             "$P4A_DIR"
           cd "$P4A_DIR"
           git describe --tags --always || true
-
-      - name: Patch python3 recipe
-        shell: bash
-        run: |
-          set -e
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
-          PATCHFILE=/tmp/ee_patch.py
-
-          # Write the patch helper to a temp file, one line per printf,
-          # so no YAML indentation is preserved into the file.
-          : > "$PATCHFILE"
-          printf '%s\n' '' >> "$PATCHFILE"
-          printf '%s\n' '' >> "$PATCHFILE"
-          printf '%s\n' '# EE Inspector Pro Android compatibility patch' >> "$PATCHFILE"
-          printf '%s\n' '_ee_original_prebuild_arch = Python3Recipe.prebuild_arch' >> "$PATCHFILE"
-          printf '%s\n' '' >> "$PATCHFILE"
-          printf '%s\n' '' >> "$PATCHFILE"
-          printf '%s\n' 'def _ee_patched_prebuild_arch(self, arch):' >> "$PATCHFILE"
-          printf '%s\n' '    result = _ee_original_prebuild_arch(self, arch)' >> "$PATCHFILE"
-          printf '%s\n' '    import os' >> "$PATCHFILE"
-          printf '%s\n' '    from pathlib import Path' >> "$PATCHFILE"
-          printf '%s\n' '    build_dir = self.get_build_dir(arch.arch)' >> "$PATCHFILE"
-          printf '%s\n' '    grp_file = Path(build_dir) / "Modules" / "grpmodule.c"' >> "$PATCHFILE"
-          printf '%s\n' '    if grp_file.is_file():' >> "$PATCHFILE"
-          printf '%s\n' '        src = grp_file.read_text()' >> "$PATCHFILE"
-          printf '%s\n' '        marker = "grp_getgrall_impl(PyObject *module)"' >> "$PATCHFILE"
-          printf '%s\n' '        idx = src.find(marker)' >> "$PATCHFILE"
-          printf '%s\n' '        if idx >= 0:' >> "$PATCHFILE"
-          printf '%s\n' '            brace = src.find("{", idx)' >> "$PATCHFILE"
-          printf '%s\n' '            if brace >= 0:' >> "$PATCHFILE"
-          printf '%s\n' '                depth = 0' >> "$PATCHFILE"
-          printf '%s\n' '                end = -1' >> "$PATCHFILE"
-          printf '%s\n' '                for i in range(brace, len(src)):' >> "$PATCHFILE"
-          printf '%s\n' '                    c = src[i]' >> "$PATCHFILE"
-          printf '%s\n' '                    if c == "{":' >> "$PATCHFILE"
-          printf '%s\n' '                        depth += 1' >> "$PATCHFILE"
-          printf '%s\n' '                    elif c == "}":' >> "$PATCHFILE"
-          printf '%s\n' '                        depth -= 1' >> "$PATCHFILE"
-          printf '%s\n' '                        if depth == 0:' >> "$PATCHFILE"
-          printf '%s\n' '                            end = i + 1' >> "$PATCHFILE"
-          printf '%s\n' '                            break' >> "$PATCHFILE"
-          printf '%s\n' '                if end > 0:' >> "$PATCHFILE"
-          printf '%s\n' '                    replacement = (' >> "$PATCHFILE"
-          printf '%s\n' '                        "grp_getgrall_impl(PyObject *module)\n"' >> "$PATCHFILE"
-          printf '%s\n' '                        "{\n"' >> "$PATCHFILE"
-          printf '%s\n' '                        "    PyObject *d = PyDict_New();\n"' >> "$PATCHFILE"
-          printf '%s\n' '                        "    if (d == NULL)\n"' >> "$PATCHFILE"
-          printf '%s\n' '                        "        return NULL;\n"' >> "$PATCHFILE"
-          printf '%s\n' '                        "    return d;\n"' >> "$PATCHFILE"
-          printf '%s\n' '                        "}"' >> "$PATCHFILE"
-          printf '%s\n' '                    )' >> "$PATCHFILE"
-          printf '%s\n' '                    src = src[:idx] + replacement + src[end:]' >> "$PATCHFILE"
-          printf '%s\n' '                    grp_file.write_text(src)' >> "$PATCHFILE"
-          printf '%s\n' '                    print("EE Inspector Pro: patched grpmodule.c")' >> "$PATCHFILE"
-          printf '%s\n' '    setup = Path(build_dir) / "Modules" / "Setup"' >> "$PATCHFILE"
-          printf '%s\n' '    if setup.is_file():' >> "$PATCHFILE"
-          printf '%s\n' '        text = setup.read_text()' >> "$PATCHFILE"
-          printf '%s\n' '        text = text.replace("readline readline.c", "*disabled*")' >> "$PATCHFILE"
-          printf '%s\n' '        text = text.replace("lzma lzma.c", "*disabled*")' >> "$PATCHFILE"
-          printf '%s\n' '        setup.write_text(text)' >> "$PATCHFILE"
-          printf '%s\n' '        print("EE Inspector Pro: disabled readline and lzma modules")' >> "$PATCHFILE"
-          printf '%s\n' '' >> "$PATCHFILE"
-          printf '%s\n' '' >> "$PATCHFILE"
-          printf '%s\n' 'Python3Recipe.prebuild_arch = _ee_patched_prebuild_arch' >> "$PATCHFILE"
-
-          # Append helper to the recipe
-          cat "$PATCHFILE" >> "$RECIPE"
-
-          # Syntax check
-          python -m py_compile "$RECIPE"
-          echo "OK: recipe compiles."
-
-          # Show the tail
-          echo "===== last 20 lines of recipe ====="
-          tail -n 20 "$RECIPE"
 
       - name: Verify build configuration
         shell: bash
