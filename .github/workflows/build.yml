@@ -21,9 +21,7 @@ jobs:
       - name: Install system dependencies
         run: |
           set -e
-
           sudo apt-get update
-
           sudo apt-get install -y \
             git \
             zip \
@@ -47,9 +45,8 @@ jobs:
             wget \
             patch \
             build-essential \
-            liblzma-dev 
-    
-          
+            liblzma-dev
+
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
@@ -74,8 +71,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-v5-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-v5-${{ runner.os }}-
+          key: buildozer-v6-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: buildozer-v6-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -101,67 +98,68 @@ jobs:
 
           echo "===== appending patch hook ====="
 
-          # Append a prebuild_arch hook that:
-          #   1. Removes grp getgrent/setgrent/endgrent calls from grpmodule.c
-          #   2. Disables readline and lzma modules in Modules/Setup
           cat >> "$RECIPE" <<'PATCH_EOF'
 
-      
-          # --- EE Inspector Pro grpmodule.c patch ---
-          _ee_original_build_arch = Python3Recipe.build_arch
 
-          def _ee_patched_prebuild_arch(self, arch):
-               result = _ee_original_prebuild_arch(self, arch)
-               import os
-               from pathlib import Path
+# ---------------------------------------------------------
+# EE Inspector Pro: Android compatibility patch
+# ---------------------------------------------------------
+_ee_original_prebuild_arch = Python3Recipe.prebuild_arch
 
-               build_dir = self.get_build_dir(arch.arch)
 
-              # --- 1. Patch grpmodule.c to remove setgrent/getgrent/endgrent ---
-              grp_file = Path(build_dir) / "Modules" / "grpmodule.c"
-              if grp_file.is_file():
-                 src = grp_file.read_text()
-                 marker = "grp_getgrall_impl(PyObject *module)"
-                 idx = src.find(marker)
-                 if idx >= 0:
-                    brace = src.find("{", idx)
-                    if brace >= 0:
-                        depth = 0
-                        end = -1
-                        for i in range(brace, len(src)):
-                            c = src[i]
-                            if c == "{":
-                               depth += 1
-                            elif c == "}":
-                                depth -= 1
-                            if depth == 0:
-                                end = i + 1
-                                break
-                   if end > 0:
-                      replacement = (
-                         "grp_getgrall_impl(PyObject *module)\n"
+def _ee_patched_prebuild_arch(self, arch):
+    result = _ee_original_prebuild_arch(self, arch)
+    import os
+    from pathlib import Path
+
+    build_dir = self.get_build_dir(arch.arch)
+
+    # 1. Patch grpmodule.c to remove setgrent/getgrent/endgrent
+    grp_file = Path(build_dir) / "Modules" / "grpmodule.c"
+    if grp_file.is_file():
+        src = grp_file.read_text()
+        marker = "grp_getgrall_impl(PyObject *module)"
+        idx = src.find(marker)
+        if idx >= 0:
+            brace = src.find("{", idx)
+            if brace >= 0:
+                depth = 0
+                end = -1
+                for i in range(brace, len(src)):
+                    c = src[i]
+                    if c == "{":
+                        depth += 1
+                    elif c == "}":
+                        depth -= 1
+                        if depth == 0:
+                            end = i + 1
+                            break
+                if end > 0:
+                    replacement = (
+                        "grp_getgrall_impl(PyObject *module)\n"
                         "{\n"
                         "    PyObject *d = PyDict_New();\n"
                         "    if (d == NULL)\n"
                         "        return NULL;\n"
                         "    return d;\n"
                         "}"
-                     )
-                     src = src[:idx] + replacement + src[end:]
-                     grp_file.write_text(src)
-                     print("EE Inspector Pro: patched grpmodule.c")
+                    )
+                    src = src[:idx] + replacement + src[end:]
+                    grp_file.write_text(src)
+                    print("EE Inspector Pro: patched grpmodule.c")
 
-                    # --- 2. Disable readline and lzma modules in Modules/Setup ---
-                   setup = Path(build_dir) / "Modules" / "Setup"
-                   if setup.is_file():
-                      text = setup.read_text()
-                      text = text.replace("readline readline.c", "*disabled*")
-                      text = text.replace("lzma lzma.c", "*disabled*")
-                      setup.write_text(text)
-                      print("EE Inspector Pro: disabled readline and lzma modules")
+    # 2. Disable readline and lzma modules in Modules/Setup
+    setup = Path(build_dir) / "Modules" / "Setup"
+    if setup.is_file():
+        text = setup.read_text()
+        text = text.replace("readline readline.c", "*disabled*")
+        text = text.replace("lzma lzma.c", "*disabled*")
+        setup.write_text(text)
+        print("EE Inspector Pro: disabled readline and lzma modules")
 
-          Python3Recipe.build_arch = _ee_patched_build_arch
-          PATCH_EOF
+
+Python3Recipe.prebuild_arch = _ee_patched_prebuild_arch
+PATCH_EOF
 
           echo "===== recipe patched ====="
 
@@ -169,15 +167,7 @@ jobs:
           echo "OK: recipe compiles."
 
           echo "===== showing the hook ====="
-          tail -n 50 "$RECIPE"
-                
-      - name: Disable readline module in CPython build
-        run: |
-          set -e
-          P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
-          RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
-
-          cat >> "$RECIPE" <<'PYRECIPE'
+          tail -n 60 "$RECIPE"
 
       - name: Verify build configuration
         shell: bash
