@@ -174,33 +174,30 @@ jobs:
           P4A_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android"
           RECIPE="$P4A_DIR/pythonforandroid/recipes/python3/__init__.py"
 
-          cat >> "$RECIPE" <<'PYRECIPE'
+          cat >> "$RECIPE" <<'MODEOF'
 
           # --- EE Inspector Pro: disable optional modules that don't build on Android ---
-          _ee_original_build_arch_3 = Python3Recipe.build_arch
+          _ee_original_prebuild_arch = Python3Recipe.prebuild_arch
 
-          def _ee_patched_build_arch_optional(self, arch):
+          def _ee_patched_prebuild_arch(self, arch):
+              result = _ee_original_prebuild_arch(self, arch)
               import os
               build_dir = self.get_build_dir(arch.arch)
               setup = os.path.join(build_dir, "Modules", "Setup")
               if os.path.isfile(setup):
                   with open(setup) as f:
                       text = f.read()
-                  # Disable lzma, readline, and other modules that fail cross-compilation
-                  for mod in ("readline", "lzma"):
-                      text = text.replace(
-                          f"{mod} {mod}.c",
-                          f"*disabled*\n# {mod} {mod}.c"
-                      )
-                  # Also handle the actual setup line format
                   text = text.replace("readline readline.c", "*disabled*")
                   text = text.replace("lzma lzma.c", "*disabled*")
                   with open(setup, "w") as f:
                       f.write(text)
-              return _ee_original_build_arch_3(self, arch)
+                  print("EE Inspector Pro: disabled readline and lzma modules")
+              else:
+                  print("EE Inspector Pro: Setup file not found at", setup)
+              return result
 
-          Python3Recipe.build_arch = _ee_patched_build_arch_optional
-          PYRECIPE
+          Python3Recipe.prebuild_arch = _ee_patched_prebuild_arch
+          MODEOF
 
           python -m py_compile "$RECIPE"
           echo "OK: optional module disable hook installed."
