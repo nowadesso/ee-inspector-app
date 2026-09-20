@@ -74,8 +74,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-final-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-final-${{ runner.os }}-
+          key: buildozer-v5-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-v5-${{ runner.os }}-
 
       - name: Remove stale python-for-android
         run: |
@@ -120,36 +120,36 @@ jobs:
               # --- 1. Patch grpmodule.c to remove setgrent/getgrent/endgrent ---
               grp_file = Path(build_dir) / "Modules" / "grpmodule.c"
               if grp_file.is_file():
-              src = grp_file.read_text()
-              marker = "grp_getgrall_impl(PyObject *module)"
-              idx = src.find(marker)
-              if idx >= 0:
-            brace = src.find("{", idx)
-            if brace >= 0:
-                depth = 0
-                end = -1
-                for i in range(brace, len(src)):
-                    c = src[i]
-                    if c == "{":
-                        depth += 1
-                    elif c == "}":
-                        depth -= 1
-                        if depth == 0:
-                            end = i + 1
-                            break
-                if end > 0:
-                    replacement = (
-                        "grp_getgrall_impl(PyObject *module)\n"
+                 src = grp_file.read_text()
+                 marker = "grp_getgrall_impl(PyObject *module)"
+                 idx = src.find(marker)
+                 if idx >= 0:
+                    brace = src.find("{", idx)
+                    if brace >= 0:
+                        depth = 0
+                        end = -1
+                        for i in range(brace, len(src)):
+                            c = src[i]
+                            if c == "{":
+                               depth += 1
+                            elif c == "}":
+                                depth -= 1
+                            if depth == 0:
+                                end = i + 1
+                                break
+                   if end > 0:
+                      replacement = (
+                         "grp_getgrall_impl(PyObject *module)\n"
                         "{\n"
                         "    PyObject *d = PyDict_New();\n"
                         "    if (d == NULL)\n"
                         "        return NULL;\n"
                         "    return d;\n"
                         "}"
-                    )
-                    src = src[:idx] + replacement + src[end:]
-                    grp_file.write_text(src)
-                    print("EE Inspector Pro: patched grpmodule.c")
+                     )
+                     src = src[:idx] + replacement + src[end:]
+                     grp_file.write_text(src)
+                     print("EE Inspector Pro: patched grpmodule.c")
 
                     # --- 2. Disable readline and lzma modules in Modules/Setup ---
                    setup = Path(build_dir) / "Modules" / "Setup"
@@ -161,7 +161,7 @@ jobs:
                       print("EE Inspector Pro: disabled readline and lzma modules")
 
           Python3Recipe.build_arch = _ee_patched_build_arch
-          PYRECIPE
+          PATCH_EOF
 
           echo "===== recipe patched ====="
 
@@ -169,7 +169,7 @@ jobs:
           echo "OK: recipe compiles."
 
           echo "===== showing the hook ====="
-          tail -n 60 "$RECIPE"
+          tail -n 50 "$RECIPE"
                 
       - name: Disable readline module in CPython build
         run: |
