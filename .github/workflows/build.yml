@@ -26,7 +26,7 @@ jobs:
             git zip unzip openjdk-17-jdk autoconf automake libtool \
             libltdl-dev pkg-config zlib1g-dev libncurses5-dev \
             libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev \
-            gettext autopoint curl wget patch build-essential liblzma-dev
+            gettext autopoint curl wget patch build-essential \ liblzma-dev
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
