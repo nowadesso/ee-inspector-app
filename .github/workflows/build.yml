@@ -33,101 +33,25 @@ jobs:
           path: |
             .buildozer
             ~/.buildozer
-          key: buildozer-sdl2-mirror-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-sdl2-mirror-${{ runner.os }}-
-
-      - name: Clean broken SDK state
-        run: |
-          set -e
-          rm -rf /github/home/.buildozer/android/platform/android-sdk
-          rm -rf /github/home/.buildozer/android/platform/android-ndk-r28c
-          echo "Cleaned broken SDK/NDK state"
+          key: buildozer-sdl2-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-sdl2-${{ runner.os }}-
 
       - name: Wrap cmake to inject CMAKE_POLICY_VERSION_MINIMUM
         run: |
           set -e
           mkdir -p /usr/local/bin
-          cat > /usr/local/bin/cmake <<'WRAPEOF'
-          #!/bin/sh
-          exec /usr/bin/cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@"
-          WRAPEOF
+          printf '#!/bin/sh\nexec /usr/bin/cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@"\n' > /usr/local/bin/cmake
           chmod +x /usr/local/bin/cmake
           which cmake
           cmake --version | head -1
           echo "cmake wrapper installed"
-                       
-      - name: Patch SDL2 for NDK compatibility
-        run: |
-          set -e
-          SDL_FILE="/__w/ee-inspector-app/ee-inspector-app/.buildozer/android/platform/build-arm64-v8a/build/bootstrap_builds/sdl2/jni/SDL/src/sensor/android/SDL_androidsensor.c"
-          if [ -f "$SDL_FILE" ]; then
-            sed -i 's/ALooper_pollAll/ALooper_pollOnce/g' "$SDL_FILE"
-            echo "Patched SDL_androidsensor.c"
-            grep -n "ALooper_pollOnce" "$SDL_FILE"
-          else
-            echo "SDL file not found at $SDL_FILE"
-            find /__w/ee-inspector-app/ee-inspector-app/.buildozer -name "SDL_androidsensor.c" 2>/dev/null
-          fi
 
-      - name: Install sdl2 patch hook
-        run: |
-          set -e
-          SITE_DIR=$(python3 -c "import site; print(site.getsitepackages()[0])")
-          echo "site-packages: $SITE_DIR"
-          cat > "$SITE_DIR/sitecustomize.py" <<'PYEOF'
-          # Auto-patch p4a's sdl2 recipe to fix ALooper_pollAll on NDK r27+.
-          try:
-              import pythonforandroid.recipes.sdl2 as _sdl2
-              _recipe = _sdl2.recipe
-              _original_prebuild_arch = _recipe.prebuild_arch
-
-              def _patched_prebuild_arch(self, arch):
-                  result = _original_prebuild_arch(arch)
-                  from pathlib import Path
-                  build_dir = Path(self.get_build_dir(arch.arch))
-                  for f in build_dir.rglob("SDL_androidsensor.c"):
-                      text = f.read_text()
-                      if "ALooper_pollAll" in text:
-                          f.write_text(text.replace("ALooper_pollAll", "ALooper_pollOnce"))
-                          print(f"EE Inspector Pro: patched {f}")
-                  return result
-
-              _recipe.prebuild_arch = _patched_prebuild_arch
-              print("EE Inspector Pro: sdl2 patch hook installed via sitecustomize")
-          except Exception as e:
-              print(f"EE Inspector Pro: sdl2 patch hook failed: {e}")
-          PYEOF
-          echo "sitecustomize.py written" 
       - name: Install SDL2 patch hook
         run: |
           set -e
           SITE_DIR=$(python3 -c "import site; print(site.getsitepackages()[0])")
-          echo "site-packages: $SITE_DIR"
-          cat > "$SITE_DIR/sitecustomize.py" <<'PYEOF'
-# Auto-patch p4a's sdl2 recipe to replace ALooper_pollAll with ALooper_pollOnce.
-# This runs at Python startup, before p4a imports the recipe.
-try:
-    import pythonforandroid.recipes.sdl2 as _sdl2
-    _recipe = _sdl2.recipe
-    _original_prebuild_arch = _recipe.prebuild_arch
-
-    def _patched_prebuild_arch(self, arch):
-        result = _original_prebuild_arch(arch)
-        from pathlib import Path
-        build_dir = Path(self.get_build_dir(arch.arch))
-        for f in build_dir.rglob("SDL_androidsensor.c"):
-            text = f.read_text()
-            if "ALooper_pollAll" in text:
-                f.write_text(text.replace("ALooper_pollAll", "ALooper_pollOnce"))
-                print(f"EE Inspector Pro: patched {f}")
-        return result
-
-    _recipe.prebuild_arch = _patched_prebuild_arch
-    print("EE Inspector Pro: sdl2 patch hook installed via sitecustomize")
-    except Exception as e:
-    print(f"EE Inspector Pro: sdl2 patch hook failed: {e}")
-    PYEOF
-            echo "sitecustomize.py written"
+          cp scripts/sitecustomize.py "$SITE_DIR/sitecustomize.py"
+          echo "Installed to $SITE_DIR/sitecustomize.py"
 
       - name: Build APK
         run: |
