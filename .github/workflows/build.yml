@@ -26,6 +26,28 @@ jobs:
           key: buildozer-sdl2-mirror-${{ runner.os }}-${{ github.run_id }}
           restore-keys: buildozer-sdl2-mirror-${{ runner.os }}-
 
+      - name: Fix sdkmanager path for Buildozer
+        run: |
+          set -e
+          SDK_DIR="/github/home/.buildozer/android/platform/android-sdk"
+          mkdir -p "$SDK_DIR/tools/bin"
+          # The image has cmdline-tools/latest/bin/sdkmanager
+          if [ -f "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+            ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "$SDK_DIR/tools/bin/sdkmanager"
+            echo "Symlinked sdkmanager"
+          else
+            # Fallback: search for it
+            FOUND=$(find "$SDK_DIR" -name sdkmanager -type f 2>/dev/null | head -1)
+            if [ -n "$FOUND" ]; then
+              ln -sf "$FOUND" "$SDK_DIR/tools/bin/sdkmanager"
+              echo "Symlinked from $FOUND"
+            else
+              echo "ERROR: sdkmanager not found anywhere in $SDK_DIR"
+              exit 1
+            fi
+          fi
+          ls -la "$SDK_DIR/tools/bin/"
+
       - name: Pre-download SDL2
         run: |
           set -e
