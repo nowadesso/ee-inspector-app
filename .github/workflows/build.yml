@@ -34,6 +34,19 @@ jobs:
           rm -rf /github/home/.buildozer/android/platform/android-sdk
           rm -rf /github/home/.buildozer/android/platform/android-ndk-r28c
           echo "Cleaned broken SDK/NDK state"
+                
+      - name: Wrap cmake to inject CMAKE_POLICY_VERSION_MINIMUM
+        run: |
+          set -e
+          mkdir -p /usr/local/bin
+          cat > /usr/local/bin/cmake <<'WRAPEOF'
+          #!/bin/sh
+          exec /usr/bin/cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@"
+          WRAPEOF
+          chmod +x /usr/local/bin/cmake
+          which cmake
+          cmake --version | head -1
+          echo "cmake wrapper installed"
 
       - name: Build APK
         run: |
