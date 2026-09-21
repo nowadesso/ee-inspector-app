@@ -43,13 +43,12 @@ jobs:
           mkdir -p "$SDK_DIR"
           cd "$SDK_DIR"
           
-          # Use the official Google URL directly
+          # Try Tsinghua mirror
           curl -L -o commandlinetools-linux-6514223_latest.zip \
-            "https://dl.google.com/android/repository/commandlinetools-linux-6514223_latest.zip"
+            "https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-6514223_latest.zip"
           
-          # Verify the download is a valid zip
           unzip -t commandlinetools-linux-6514223_latest.zip > /dev/null
-          echo "SDK tools downloaded and verified: $(ls -la commandlinetools-linux-6514223_latest.zip)"
+          echo "SDK tools downloaded from mirror and verified"
           
       - name: Build APK
         run: |
