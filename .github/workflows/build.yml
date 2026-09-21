@@ -48,15 +48,19 @@ jobs:
           mkdir -p "$SDK_DIR"
           python3 -c "
           import urllib.request
-          url = 'https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-6514223_latest.zip'
+          import hashlib
+          import os
+          url = 'https://dl.google.com/android/repository/commandlinetools-linux-6514223_latest.zip'
           out = '$SDK_DIR/commandlinetools-linux-6514223_latest.zip'
           print('Downloading', url)
           urllib.request.urlretrieve(url, out)
-          import os
-          print('Downloaded', os.path.getsize(out), 'bytes')
+          size = os.path.getsize(out)
+          print('Downloaded', size, 'bytes')
+          if size < 1000000:
+              raise RuntimeError('Download too small, likely corrupted')
           "
           unzip -t "$SDK_DIR/commandlinetools-linux-6514223_latest.zip" > /dev/null
-          echo "SDK tools verified"
+          echo "SDK tools downloaded and verified"
 
       - name: Build APK
         run: |
