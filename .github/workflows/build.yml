@@ -35,6 +35,21 @@ jobs:
           wget -q "http://mirror.koddos.net/blfs/conglomeration/SDL/SDL2-2.28.5.tar.gz" -O SDL2-2.28.5.tar.gz
           ls -la
           echo "SDL2 pre-downloaded successfully"
+
+      - name: Pre-download Android SDK command-line tools
+        run: |
+          set -e
+          SDK_DIR="/github/home/.buildozer/android/platform/android-sdk"
+          mkdir -p "$SDK_DIR"
+          cd "$SDK_DIR"
+          
+          # Use the official Google URL directly
+          curl -L -o commandlinetools-linux-6514223_latest.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-6514223_latest.zip"
+          
+          # Verify the download is a valid zip
+          unzip -t commandlinetools-linux-6514223_latest.zip > /dev/null
+          echo "SDK tools downloaded and verified: $(ls -la commandlinetools-linux-6514223_latest.zip)"
           
       - name: Build APK
         run: |
