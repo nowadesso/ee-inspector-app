@@ -34,7 +34,7 @@ p4a.local_recipes = ../../../../recipes
 [buildozer]
 
 log_level = 2
-warn_on_root = 1
+warn_on_root = 0
 build_dir = .buildozer
 bin_dir = bin
 
