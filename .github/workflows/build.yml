@@ -26,27 +26,30 @@ jobs:
           key: buildozer-sdl2-mirror-${{ runner.os }}-${{ github.run_id }}
           restore-keys: buildozer-sdl2-mirror-${{ runner.os }}-
 
-      - name: Fix sdkmanager path for Buildozer
+      - name: Locate and link sdkmanager
         run: |
           set -e
           SDK_DIR="/github/home/.buildozer/android/platform/android-sdk"
-          mkdir -p "$SDK_DIR/tools/bin"
-          # The image has cmdline-tools/latest/bin/sdkmanager
-          if [ -f "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
-            ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "$SDK_DIR/tools/bin/sdkmanager"
-            echo "Symlinked sdkmanager"
+          echo "===== SDK directory contents ====="
+          ls -la "$SDK_DIR"
+          echo ""
+          echo "===== Searching for sdkmanager ====="
+          find "$SDK_DIR" -name "sdkmanager" -type f 2>/dev/null
+          echo ""
+          echo "===== Searching for cmdline-tools directories ====="
+          find "$SDK_DIR" -type d -name "cmdline-tools" 2>/dev/null
+          echo ""
+          # Try to create symlink from whatever we find
+          FOUND=$(find "$SDK_DIR" -name "sdkmanager" -type f 2>/dev/null | head -1)
+          if [ -n "$FOUND" ]; then
+            mkdir -p "$SDK_DIR/tools/bin"
+            ln -sf "$FOUND" "$SDK_DIR/tools/bin/sdkmanager"
+            echo "Symlinked sdkmanager from: $FOUND"
+            ls -la "$SDK_DIR/tools/bin/"
           else
-            # Fallback: search for it
-            FOUND=$(find "$SDK_DIR" -name sdkmanager -type f 2>/dev/null | head -1)
-            if [ -n "$FOUND" ]; then
-              ln -sf "$FOUND" "$SDK_DIR/tools/bin/sdkmanager"
-              echo "Symlinked from $FOUND"
-            else
-              echo "ERROR: sdkmanager not found anywhere in $SDK_DIR"
-              exit 1
-            fi
+            echo "ERROR: sdkmanager still not found"
+            exit 1
           fi
-          ls -la "$SDK_DIR/tools/bin/"
 
       - name: Pre-download SDL2
         run: |
