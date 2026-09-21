@@ -22,7 +22,8 @@ android.api = 33
 android.minapi = 24
 android.ndk = 28c
 android.accept_sdk_license = True
-android.sdk_path = /github/home/.buildozer/android/platform/android-sdk/cmdline-tools/latest
+android.sdk_path = /github/home/.buildozer/android/platform/android-sdk
+#android.sdk_path = /github/home/.buildozer/android/platform/android-sdk/cmdline-tools/latest
 android.archs = arm64-v8a
 
 buildozer_dir = .buildozer
