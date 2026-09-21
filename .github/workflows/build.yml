@@ -23,69 +23,15 @@ jobs:
           path: |
             .buildozer
             ~/.buildozer
-          key: buildozer-sdl2-mirror-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: buildozer-sdl2-mirror-${{ runner.os }}-
+          key: buildozer-clean-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: buildozer-clean-${{ runner.os }}-
 
-      - name: Locate and link sdkmanager
+      - name: Clean broken SDK state
         run: |
           set -e
-          SDK_DIR="/github/home/.buildozer/android/platform/android-sdk"
-          echo "===== SDK directory contents ====="
-          ls -la "$SDK_DIR"
-          echo ""
-          echo "===== Searching for sdkmanager ====="
-          find "$SDK_DIR" -name "sdkmanager" -type f 2>/dev/null
-          echo ""
-          echo "===== Searching for cmdline-tools directories ====="
-          find "$SDK_DIR" -type d -name "cmdline-tools" 2>/dev/null
-          echo ""
-          # Try to create symlink from whatever we find
-          FOUND=$(find "$SDK_DIR" -name "sdkmanager" -type f 2>/dev/null | head -1)
-          if [ -n "$FOUND" ]; then
-            mkdir -p "$SDK_DIR/tools/bin"
-            ln -sf "$FOUND" "$SDK_DIR/tools/bin/sdkmanager"
-            echo "Symlinked sdkmanager from: $FOUND"
-            ls -la "$SDK_DIR/tools/bin/"
-          else
-            echo "ERROR: sdkmanager still not found"
-            exit 1
-          fi
-
-      - name: Pre-download SDL2
-        run: |
-          set -e
-          PACKAGES_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/sdl2"
-          mkdir -p "$PACKAGES_DIR"
-          python3 -c "
-          import urllib.request
-          url = 'http://mirror.koddos.net/blfs/conglomeration/SDL/SDL2-2.28.5.tar.gz'
-          out = '$PACKAGES_DIR/SDL2-2.28.5.tar.gz'
-          print('Downloading', url)
-          urllib.request.urlretrieve(url, out)
-          import os
-          print('Downloaded', os.path.getsize(out), 'bytes')
-          "
-
-      - name: Pre-download Android SDK command-line tools
-        run: |
-          set -e
-          SDK_DIR="/github/home/.buildozer/android/platform/android-sdk"
-          mkdir -p "$SDK_DIR"
-          python3 -c "
-          import urllib.request
-          import hashlib
-          import os
-          url = 'https://dl.google.com/android/repository/commandlinetools-linux-6514223_latest.zip'
-          out = '$SDK_DIR/commandlinetools-linux-6514223_latest.zip'
-          print('Downloading', url)
-          urllib.request.urlretrieve(url, out)
-          size = os.path.getsize(out)
-          print('Downloaded', size, 'bytes')
-          if size < 1000000:
-              raise RuntimeError('Download too small, likely corrupted')
-          "
-          unzip -t "$SDK_DIR/commandlinetools-linux-6514223_latest.zip" > /dev/null
-          echo "SDK tools downloaded and verified"
+          rm -rf /github/home/.buildozer/android/platform/android-sdk
+          rm -rf /github/home/.buildozer/android/platform/android-ndk-r28c
+          echo "Cleaned broken SDK/NDK state"
 
       - name: Build APK
         run: |
