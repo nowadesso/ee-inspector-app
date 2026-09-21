@@ -31,7 +31,7 @@ jobs:
           set -e
           sed -i "s|^p4a.local_recipes = .*|p4a.local_recipes = $GITHUB_WORKSPACE/recipes|" buildozer.spec
           grep "p4a.local_recipes" buildozer.spec
-          buildozer -v android debug
+          echo "y" | buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
