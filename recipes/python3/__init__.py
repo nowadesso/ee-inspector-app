@@ -9,28 +9,26 @@ class Python3Recipe(_Base):
 
     patches = []
 
+    def build_arch(self, arch):
+        # Append our extra configure flags WITHOUT replacing p4a's own
+        # cross-compilation flags (--host, --build, --prefix etc).
+        extra = [
+            "--without-readline",
+            "--without-curses",
+            "--without-panel",
+            "--without-terminfo",
+        ]
+        self.configure_args = list(self.configure_args) + [
+            f for f in extra if f not in self.configure_args
+        ]
+        print("EE Inspector Pro: configure_args =", self.configure_args)
+
+        super().build_arch(arch)
+
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
         build_dir = Path(self.get_build_dir(arch.arch))
         modules_dir = build_dir / "Modules"
-
-        # Append a *disabled* section to Setup.dist. CPython's configure
-        # reads Setup.dist to generate the Makefile, so adding to it here
-        # (in prebuild_arch, before configure runs) makes our disables
-        # take effect.
-        if modules_dir.is_dir():
-            setup_dist = modules_dir / "Setup.dist"
-            if setup_dist.is_file():
-                text = setup_dist.read_text()
-                if "_uuid _uuidmodule.c" not in text:
-                    text += (
-                        "\n*disabled*\n"
-                        "_uuid _uuidmodule.c\n"
-                        "readline readline.c\n"
-                        "lzma _lzmamodule.c\n"
-                    )
-                    setup_dist.write_text(text)
-                    print("EE Inspector Pro: appended *disabled* to Setup.dist")
 
         # Patch grpmodule.c
         grp_file = modules_dir / "grpmodule.c"
