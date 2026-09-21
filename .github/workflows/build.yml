@@ -31,6 +31,7 @@ jobs:
           set -e
           sed -i "s|^p4a.local_recipes = .*|p4a.local_recipes = $GITHUB_WORKSPACE/recipes|" buildozer.spec
           grep "p4a.local_recipes" buildozer.spec
+          export CMAKE_POLICY_VERSION_MINIMUM=3.5
           echo "y" | buildozer -v android debug
 
       - name: Upload APK
