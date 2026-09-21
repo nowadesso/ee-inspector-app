@@ -1,34 +1,50 @@
 """EE Inspector Pro local Python 3 recipe."""
 
+import os
 from pathlib import Path
 
 from pythonforandroid.recipes.python3 import Python3Recipe as _Base
+from pythonforandroid.logger import shprint
+from pythonforandroid.util import current_directory
 
-
-# ---------------------------------------------------------
-# Add --without-readline to the configure args so CPython's
-# ./configure disables the readline module entirely. This
-# prevents the Makefile from even trying to compile it.
-# ---------------------------------------------------------
-#_Base.configure_args = list(_Base.configure_args) + ['--without-readline']
-_Base.configure_args = list(_Base.configure_args) + [
-    '--without-readline',
-    '--without-curses',
-    '--without-panel',
-    '--without-terminfo',
-]
 
 class Python3Recipe(_Base):
-    """Local override: patch grpmodule.c on Android."""
 
+    # No patches — we ship none.
     patches = []
+
+    # Force-disable these modules at configure time.
+    configure_args = [
+        "--disable-ipv6",
+        "--without-curses",
+        "--without-readline",
+        "--without-panel",
+        "--without-terminfo",
+        "--enable-unicode",
+        "--with-openssl=",
+    ]
 
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
-
         build_dir = Path(self.get_build_dir(arch.arch))
 
-        # Patch grpmodule.c to remove setgrent/getgrent/endgrent
+        # 1. Neutralize lzma and readline in every Setup file.
+        for name in ("Setup", "Setup.dist", "Setup.local"):
+            setup_path = build_dir / "Modules" / name
+            if not setup_path.is_file():
+                continue
+            lines = setup_path.read_text().splitlines()
+            out = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("readline ") or stripped.startswith("lzma "):
+                    out.append("# disabled by ee-inspector: " + line)
+                else:
+                    out.append(line)
+            setup_path.write_text("\n".join(out) + "\n")
+            print(f"EE Inspector Pro: sanitized Modules/{name}")
+
+        # 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent.
         grp_file = build_dir / "Modules" / "grpmodule.c"
         if grp_file.is_file():
             src = grp_file.read_text()
