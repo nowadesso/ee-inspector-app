@@ -1,50 +1,27 @@
 """EE Inspector Pro local Python 3 recipe."""
 
-import os
 from pathlib import Path
 
 from pythonforandroid.recipes.python3 import Python3Recipe as _Base
-from pythonforandroid.logger import shprint
-from pythonforandroid.util import current_directory
 
 
 class Python3Recipe(_Base):
 
-    # No patches — we ship none.
     patches = []
 
-    # Force-disable these modules at configure time.
-    configure_args = [
-        "--disable-ipv6",
-        "--without-curses",
-        "--without-readline",
-        "--without-panel",
-        "--without-terminfo",
-        "--enable-unicode",
-        "--with-openssl=",
-    ]
+    def build_arch(self, arch):
+        # Append --without-readline to whatever p4a already set up.
+        # p4a's configure_args contain --host/--build/--prefix which are
+        # essential for cross compilation — we must not replace them.
+        if '--without-readline' not in self.configure_args:
+            self.configure_args = list(self.configure_args) + ['--without-readline']
+        super().build_arch(arch)
 
     def prebuild_arch(self, arch):
         super().prebuild_arch(arch)
         build_dir = Path(self.get_build_dir(arch.arch))
 
-        # 1. Neutralize lzma and readline in every Setup file.
-        for name in ("Setup", "Setup.dist", "Setup.local"):
-            setup_path = build_dir / "Modules" / name
-            if not setup_path.is_file():
-                continue
-            lines = setup_path.read_text().splitlines()
-            out = []
-            for line in lines:
-                stripped = line.strip()
-                if stripped.startswith("readline ") or stripped.startswith("lzma "):
-                    out.append("# disabled by ee-inspector: " + line)
-                else:
-                    out.append(line)
-            setup_path.write_text("\n".join(out) + "\n")
-            print(f"EE Inspector Pro: sanitized Modules/{name}")
-
-        # 2. Patch grpmodule.c to remove setgrent/getgrent/endgrent.
+        # Patch grpmodule.c
         grp_file = build_dir / "Modules" / "grpmodule.c"
         if grp_file.is_file():
             src = grp_file.read_text()
