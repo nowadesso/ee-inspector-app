@@ -19,6 +19,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install autotools
+        run: |
+          set -e
+          apt-get update
+          apt-get install -y autopoint gettext autoconf automake libtool
+          which autopoint
+          autopoint --version | head -1
+
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
@@ -34,7 +42,7 @@ jobs:
           rm -rf /github/home/.buildozer/android/platform/android-sdk
           rm -rf /github/home/.buildozer/android/platform/android-ndk-r28c
           echo "Cleaned broken SDK/NDK state"
-                
+
       - name: Wrap cmake to inject CMAKE_POLICY_VERSION_MINIMUM
         run: |
           set -e
