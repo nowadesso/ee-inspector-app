@@ -29,12 +29,17 @@ jobs:
       - name: Pre-download SDL2
         run: |
           set -e
-          apt-get update && apt-get install -y wget || true
           PACKAGES_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/sdl2"
           mkdir -p "$PACKAGES_DIR"
-          cd "$PACKAGES_DIR"
-          wget -q "http://mirror.koddos.net/blfs/conglomeration/SDL/SDL2-2.28.5.tar.gz" -O SDL2-2.28.5.tar.gz
-          ls -la
+          python3 -c "
+          import urllib.request
+          url = 'http://mirror.koddos.net/blfs/conglomeration/SDL/SDL2-2.28.5.tar.gz'
+          out = '$PACKAGES_DIR/SDL2-2.28.5.tar.gz'
+          print('Downloading', url, '->', out)
+          urllib.request.urlretrieve(url, out)
+          import os
+          print('Size:', os.path.getsize(out), 'bytes')
+          "
           
       - name: Build APK
         run: |
