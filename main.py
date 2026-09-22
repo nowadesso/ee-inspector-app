@@ -5,7 +5,8 @@ from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.card import MDCard
-from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.button import MDButton, MDButtonText
+#from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.textfield import MDTextField
 from kivy.metrics import dp
@@ -81,7 +82,13 @@ class ProfessionalEEMonitorApp(MDApp):
         self.result_card.add_widget(self.lbl_status)
         main_layout.add_widget(self.result_card)
         
-        self.btn_scan = MDRaisedButton(text="CALCULATE EE SCORE", size_hint_y=0.12, font_size=dp(18), on_press=self.calculate_ee)
+        self.btn_scan = MDButton(
+    MDButtonText(text="CALCULATE EE SCORE"),
+    style="elevated",
+    size_hint_y=0.12,
+    on_press=self.calculate_ee,
+)
+        #self.btn_scan = MDRaisedButton(text="CALCULATE EE SCORE", size_hint_y=0.12, font_size=dp(18), on_press=self.calculate_ee)
         main_layout.add_widget(self.btn_scan)
         
         screen.add_widget(main_layout)
