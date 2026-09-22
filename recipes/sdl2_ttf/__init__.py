@@ -1,4 +1,4 @@
-"""Local sdl2_ttf recipe that patches HarfBuzz for Clang 16+ compatibility."""
+"""Local sdl2_ttf recipe that patches HarfBuzz pragma for Clang 16+."""
 
 import types
 from pathlib import Path
@@ -11,25 +11,23 @@ _original_build_arch = _recipe.build_arch
 
 
 def _patched_build_arch(self, arch):
-    # Find hb-ft.cc and add a pragma to silence the cast-function-type-strict error.
     try:
         build_dir = Path(self.ctx.bootstrap.build_dir)
     except Exception:
         build_dir = None
 
     if build_dir and build_dir.exists():
-        for f in build_dir.rglob("hb-ft.cc"):
+        for f in build_dir.rglob("hb.hh"):
             text = f.read_text()
-            if "-Wcast-function-type-strict" in text:
-                print(f"EE Inspector Pro: hb-ft.cc already patched: {f}")
+            if 'diagnostic error "-Wcast-function-type-strict"' not in text:
+                print(f"EE Inspector Pro: hb.hh already fixed or pattern not found: {f}")
                 continue
-            # Prepend the pragma at the very top of the file.
-            patched = (
-                '#pragma GCC diagnostic ignored "-Wcast-function-type-strict"\n'
-                + text
+            text = text.replace(
+                '#pragma GCC diagnostic error "-Wcast-function-type-strict"',
+                '#pragma GCC diagnostic ignored "-Wcast-function-type-strict"'
             )
-            f.write_text(patched)
-            print(f"EE Inspector Pro: patched {f}")
+            f.write_text(text)
+            print(f"EE Inspector Pro: fixed pragma in {f}")
 
     return _original_build_arch(arch)
 
