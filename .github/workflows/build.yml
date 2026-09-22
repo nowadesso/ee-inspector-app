@@ -32,8 +32,8 @@ jobs:
           path: |
             .buildozer
             ~/.buildozer
-          key: buildozer-py311-clang-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-py311-clang-${{ runner.os }}-
+          key: buildozer-py311-diag-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-py311-diag-${{ runner.os }}-
 
       - name: Wrap cmake to inject CMAKE_POLICY_VERSION_MINIMUM
         run: |
