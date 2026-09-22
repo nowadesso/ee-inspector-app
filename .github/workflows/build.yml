@@ -46,13 +46,6 @@ jobs:
           cmake --version | head -1
           echo "cmake wrapper installed"
 
-      - name: Install SDL2 patch hook
-        run: |
-          set -e
-          SITE_DIR=$(python3 -c "import site; print(site.getsitepackages()[0])")
-          cp scripts/sitecustomize.py "$SITE_DIR/sitecustomize.py"
-          echo "Installed to $SITE_DIR/sitecustomize.py"
-
       - name: Build APK
         run: |
           set -e
