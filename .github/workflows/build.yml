@@ -25,7 +25,6 @@ jobs:
           apt-get update
           apt-get install -y autopoint gettext autoconf automake libtool
           which autopoint
-          autopoint --version | head -1
 
       - name: Cache Buildozer
         uses: actions/cache@v4
@@ -44,7 +43,6 @@ jobs:
           chmod +x /usr/local/bin/cmake
           which cmake
           cmake --version | head -1
-          echo "cmake wrapper installed"
 
       - name: Build APK
         run: |
