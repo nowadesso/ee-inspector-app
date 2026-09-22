@@ -32,8 +32,8 @@ jobs:
           path: |
             .buildozer
             ~/.buildozer
-          key: buildozer-py311-hb2-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-py311-hb2-${{ runner.os }}-
+          key: buildozer-py311-clang-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-py311-clang-${{ runner.os }}-
 
       - name: Wrap cmake to inject CMAKE_POLICY_VERSION_MINIMUM
         run: |
@@ -55,6 +55,31 @@ jobs:
           else
             echo "hostpython not found at $HOSTPYTHON"
           fi
+
+      - name: Wrap NDK clang to suppress HarfBuzz warning
+        run: |
+          set -e
+          NDK_CLANG="/github/home/.buildozer/android/platform/android-ndk-r28c/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+          NDK_CLANGXX="/github/home/.buildozer/android/platform/android-ndk-r28c/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++"
+          
+          # Move original binaries aside
+          mv "$NDK_CLANG" "${NDK_CLANG}.real"
+          mv "$NDK_CLANGXX" "${NDK_CLANGXX}.real"
+          
+          # Create wrapper scripts
+          cat > "$NDK_CLANG" <<'CLANGEOF'
+          #!/bin/sh
+          exec /github/home/.buildozer/android/platform/android-ndk-r28c/toolchains/llvm/prebuilt/linux-x86_64/bin/clang.real -Wno-cast-function-type-strict "$@"
+          CLANGEOF
+          chmod +x "$NDK_CLANG"
+          
+          cat > "$NDK_CLANGXX" <<'CLANGXXEOF'
+          #!/bin/sh
+          exec /github/home/.buildozer/android/platform/android-ndk-r28c/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++.real -Wno-cast-function-type-strict "$@"
+          CLANGXXEOF
+          chmod +x "$NDK_CLANGXX"
+          
+          echo "NDK clang wrappers installed"
 
       - name: Build APK
         run: |
