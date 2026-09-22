@@ -54,7 +54,6 @@ class OpenCVRecipe(NDKRecipe):
     def build_arch(self, arch):
         build_dir = join(
             self.get_build_dir(arch.arch),
-            '-DBUILD_opencv_aruco=OFF',
             'build'
         )
 
@@ -135,6 +134,8 @@ class OpenCVRecipe(NDKRecipe):
                 '-DBUILD_opencv_java=OFF',
 
                 '-DBUILD_opencv_java_bindings_generator=OFF',
+                
+                '-DBUILD_opencv_aruco=OFF',
 
                 '-DBUILD_TESTS=OFF',
 
