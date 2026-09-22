@@ -11,8 +11,6 @@ _original_build_arch = _recipe.build_arch
 
 
 def _patched_build_arch(self, arch):
-    # Find hb.hh inside the vendored HarfBuzz source tree.
-    # SDL_ttf extracts HarfBuzz into external/harfbuzz/ during ndk-build.
     build_dir = Path(self.ctx.bootstrap.build_dir)
 
     for hb_hh in build_dir.rglob("hb.hh"):
@@ -20,7 +18,6 @@ def _patched_build_arch(self, arch):
         if "-Wcast-function-type-strict" in text:
             print(f"EE Inspector Pro: hb.hh already patched: {hb_hh}")
             break
-        # Insert the pragma right after the last existing pragma line.
         lines = text.splitlines()
         insert_at = None
         for i, line in enumerate(lines):
@@ -34,7 +31,8 @@ def _patched_build_arch(self, arch):
         print(f"EE Inspector Pro: patched {hb_hh}")
         break
 
-    return _original_build_arch(self, arch)
+    # _original_build_arch is already bound to _recipe, so pass only arch.
+    return _original_build_arch(arch)
 
 
 _recipe.build_arch = types.MethodType(_patched_build_arch, _recipe)
