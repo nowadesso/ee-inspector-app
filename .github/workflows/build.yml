@@ -9,169 +9,102 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     container:
       image: kivy/buildozer:latest
       options: --user root
 
     env:
       CMAKE_POLICY_VERSION_MINIMUM: "3.5"
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      - name: Install Java 17 and autotools
+      - name: Install build dependencies
         shell: bash
         run: |
           set -e
-
           apt-get update
-
           apt-get install -y \
-            openjdk-17-jdk \
             autopoint \
             gettext \
             autoconf \
             automake \
             libtool \
-            pkg-config \
             patch \
-            unzip \
-            zip \
-            wget \
-            curl \
-            git
+            cmake \
+            build-essential
 
-          echo "===== Java version ====="
-
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-
-          java -version
-
-          echo "JAVA_HOME=$JAVA_HOME"
-
-          which java
-
-
-      - name: Verify Python and Buildozer
-        shell: bash
-        run: |
-          set -e
-
-          echo "===== Python ====="
+          echo "===== Tool versions ====="
           python --version
-
-          echo "===== Buildozer ====="
           buildozer --version
+          cmake --version | head -1
+          java -version 2>&1 | head -3
 
-          echo "===== Java ====="
-          java -version
-
-
-      - name: Cache Buildozer
-        uses: actions/cache@v4
-        with:
-          path: |
-            .buildozer
-            ~/.buildozer
-          key: buildozer-ee-inspector-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: |
-            buildozer-ee-inspector-${{ runner.os }}-
-
-
-      - name: Check local recipes
+      - name: Verify project files
         shell: bash
         run: |
           set -e
-
-          echo "=========================================="
-          echo " Local recipe structure"
-          echo "=========================================="
-
-          find recipes \
-            -maxdepth 3 \
-            -type f \
-            -print | sort
-
+          echo "===== Project ====="
+          pwd
           echo
-          echo "=========================================="
-          echo " Checking required recipes"
-          echo "=========================================="
-
+          echo "===== buildozer.spec ====="
+          test -f buildozer.spec
+          grep -E '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.local_recipes)' buildozer.spec || true
+          echo
+          echo "===== Local recipes ====="
+          find recipes -maxdepth 3 -type f -print | sort
+          echo
+          echo "===== Checking important files ====="
+          test -f main.py
           test -d recipes/opencv
           test -d recipes/opencv_extras
-          test -d recipes/python3
+          test -f recipes/python/__init__.py
+          test -f recipes/sdl2/__init__.py
+          test -f recipes/sdl2_ttf/__init__.py
+          echo "OK: project files found."
 
-          echo "OK: recipes/opencv exists"
-          echo "OK: recipes/opencv_extras exists"
-          echo "OK: recipes/python3 exists"
-
-          if [ -f recipes/python3/__init__.py ]; then
-            echo "ERROR: recipes/python3/__init__.py exists."
-            echo "The local Python recipe must use the p4a recipe mechanism correctly."
-          else
-            echo "Checking Python recipe directory..."
-          fi
-
-
-      - name: Verify buildozer.spec
+      - name: Check Python recipe syntax
         shell: bash
         run: |
           set -e
+          python -m py_compile recipes/python/__init__.py
+          python -m py_compile recipes/sdl2/__init__.py
+          python -m py_compile recipes/sdl2_ttf/__init__.py
+          echo "OK: local Python recipes compile."
 
-          echo "=========================================="
-          echo " buildozer.spec"
-          echo "=========================================="
-
-          grep -E \
-            '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.local_recipes)' \
-            buildozer.spec || true
-
+      - name: Prepare Buildozer configuration
+        shell: bash
+        run: |
+          set -e
+          cp buildozer.spec buildozer.spec.original
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("buildozer.spec")
+          text = p.read_text()
+          lines = text.splitlines()
+          output = []
+          for line in lines:
+              if line.strip().startswith("p4a.branch"):
+                  continue
+              if line.strip().startswith("p4a.local_recipes"):
+                  continue
+              output.append(line)
+          output.append("p4a.local_recipes = %(source.dir)s/recipes")
+          p.write_text("\n".join(output) + "\n")
+          print("Updated p4a.local_recipes.")
+          PY
           echo
-          echo "=========================================="
-          echo " OpenCV requirements"
-          echo "=========================================="
+          echo "===== Final p4a configuration ====="
+          grep -E '^p4a\.(branch|local_recipes)' buildozer.spec || true
 
-          grep -q "opencv" buildozer.spec
-          grep -q "opencv_extras" buildozer.spec
-
-          echo "OK: OpenCV requirement found."
-          echo "OK: OpenCV extras requirement found."
-
-
-      - name: Configure local recipes
+      - name: Clear incompatible cached build
         shell: bash
         run: |
           set -e
-
-          echo "=========================================="
-          echo " Configuring p4a local recipes"
-          echo "=========================================="
-
-          sed -i \
-            "s|^p4a.local_recipes = .*|p4a.local_recipes = $GITHUB_WORKSPACE/recipes|" \
-            buildozer.spec
-
-          echo
-          echo "p4a.local_recipes:"
-          grep "^p4a.local_recipes" buildozer.spec
-
-
-      - name: Clean old Android build
-        shell: bash
-        run: |
-          set -e
-
-          echo "Cleaning stale Android build directories..."
-
-          rm -rf .buildozer/android/platform/python-for-android || true
-
-          echo "Old python-for-android checkout removed."
-
+          rm -rf .buildozer/android/platform/build-arm64-v8a
+          rm -rf .buildozer/android/platform/python-for-android
+          echo "Old Android build tree removed."
 
       - name: Build APK
         shell: bash
@@ -180,45 +113,19 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -e
-
           echo "=========================================="
-          echo " Starting Buildozer Android build"
+          echo " Starting EE Inspector Pro Android build"
           echo "=========================================="
-
           echo
           echo "===== Java ====="
-          java -version
-
-          echo
-          echo "===== JAVA_HOME ====="
           echo "$JAVA_HOME"
-
+          java -version
           echo
           echo "===== Buildozer configuration ====="
-          grep -E \
-            '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.branch|p4a.local_recipes)' \
-            buildozer.spec || true
-
+          grep -E '^(requirements|android.api|android.minapi|android.ndk|android.archs|p4a.local_recipes)' buildozer.spec
           echo
           echo "===== Starting Buildozer ====="
-
-          echo "y" | buildozer -v android debug
-
-
-      - name: Show build output
-        if: always()
-        shell: bash
-        run: |
-          echo "=========================================="
-          echo " bin directory"
-          echo "=========================================="
-
-          if [ -d bin ]; then
-            ls -lah bin
-          else
-            echo "bin directory does not exist."
-          fi
-
+          buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
