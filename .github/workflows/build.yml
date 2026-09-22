@@ -32,8 +32,8 @@ jobs:
           path: |
             .buildozer
             ~/.buildozer
-          key: buildozer-sdl2-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
-          restore-keys: buildozer-sdl2-${{ runner.os }}-
+          key: buildozer-py311-sdl2-${{ runner.os }}-${{ hashFiles('buildozer.spec', 'recipes/**') }}
+          restore-keys: buildozer-py311-sdl2-${{ runner.os }}-
 
       - name: Wrap cmake to inject CMAKE_POLICY_VERSION_MINIMUM
         run: |
