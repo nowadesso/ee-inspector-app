@@ -1,31 +1,30 @@
-"""Local sdl2 recipe that patches SDL_androidsensor.c for NDK r27+ compatibility."""
+"""Local sdl2 recipe: patch SDL_androidsensor.c during prebuild for NDK r27+ compat."""
 
-import types
 from pathlib import Path
 
-import pythonforandroid.recipes.sdl2 as _sdl2
+from pythonforandroid.recipes.sdl2 import SDL2Recipe as _Base
 
 
-_recipe = _sdl2.recipe
-_original_build_arch = _recipe.build_arch
+class SDL2Recipe(_Base):
 
+    def prebuild_arch(self, arch):
+        # Run the parent prebuild first (extracts sources, applies p4a patches)
+        super().prebuild_arch(arch)
 
-def _patched_build_arch(self, arch):
-    try:
-        build_dir = Path(self.ctx.bootstrap.build_dir)
-    except Exception:
-        build_dir = None
+        build_dir = Path(self.get_build_dir(arch.arch))
+        patched_count = 0
 
-    if build_dir and build_dir.exists():
         for f in build_dir.rglob("SDL_androidsensor.c"):
             text = f.read_text()
             if "ALooper_pollAll" in text:
                 f.write_text(text.replace("ALooper_pollAll", "ALooper_pollOnce"))
+                patched_count += 1
                 print(f"EE Inspector Pro: patched {f}")
 
-    return _original_build_arch(self,arch)
+        if patched_count == 0:
+            print("EE Inspector Pro: no SDL_androidsensor.c with ALooper_pollAll found")
+        else:
+            print(f"EE Inspector Pro: patched {patched_count} file(s)")
 
 
-_recipe.build_arch = types.MethodType(_patched_build_arch, _recipe)
-
-recipe = _recipe
+recipe = SDL2Recipe()
