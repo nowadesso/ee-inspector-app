@@ -23,7 +23,7 @@ def _patched_build_arch(self, arch):
                 f.write_text(text.replace("ALooper_pollAll", "ALooper_pollOnce"))
                 print(f"EE Inspector Pro: patched {f}")
 
-    return _original_build_arch(arch)
+    return _original_build_arch(self,arch)
 
 
 _recipe.build_arch = types.MethodType(_patched_build_arch, _recipe)
