@@ -59,7 +59,7 @@ jobs:
           test -f main.py
           test -d recipes/opencv
           test -d recipes/opencv_extras
-          test -f recipes/python/__init__.py
+          test -f recipes/python3/__init__.py
           test -f recipes/sdl2/__init__.py
           test -f recipes/sdl2_ttf/__init__.py
           echo "OK: project files found."
@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          python -m py_compile recipes/python/__init__.py
+          python -m py_compile recipes/python3/__init__.py
           python -m py_compile recipes/sdl2/__init__.py
           python -m py_compile recipes/sdl2_ttf/__init__.py
           echo "OK: local Python recipes compile."
