@@ -43,6 +43,18 @@ jobs:
           chmod +x /usr/local/bin/cmake
           which cmake
           cmake --version | head -1
+                
+      - name: Install setuptools into host python
+        run: |
+          set -e
+          HOSTPYTHON="/__w/ee-inspector-app/ee-inspector-app/.buildozer/android/platform/build-arm64-v8a/build/other_builds/hostpython3/desktop/hostpython3/native-build/python3"
+          if [ -x "$HOSTPYTHON" ]; then
+            echo "Found hostpython at $HOSTPYTHON"
+            "$HOSTPYTHON" -m pip install --upgrade setuptools || true
+            "$HOSTPYTHON" -c "import setuptools; import distutils; print('setuptools OK')" || echo "setuptools import failed"
+          else
+            echo "hostpython not found at $HOSTPYTHON"
+          fi
 
       - name: Build APK
         run: |
