@@ -30,7 +30,7 @@ buildozer_dir = .buildozer
 android.project_dir = .buildozer/android/project
 
 # python-for-android
-p4a.branch = v2024.01.21
+#p4a.branch = v2024.01.21
 p4a.local_recipes = ../../../../recipes
 
 [buildozer]
