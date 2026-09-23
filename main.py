@@ -1,12 +1,23 @@
 import sys
 import os
+
+# Android/Kivy graphics configuration.
+# Must be set before importing Kivy/KivyMD.
+os.environ["KIVY_GL_BACKEND"] = "gles2"
+
+from kivy.config import Config
+
+Config.set("graphics", "multisamples", "0")
+Config.set("graphics", "resizable", "1")
+Config.set("graphics", "borderless", "0")
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'modules'))
+
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.card import MDCard
-from kivymd.uix.button import MDButton, MDButtonText
-#from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.textfield import MDTextField
 from kivy.metrics import dp
