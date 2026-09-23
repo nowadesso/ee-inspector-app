@@ -1,9 +1,11 @@
+from kivy.core.window import Window
+print("WINDOW CHECK:", Window)
 import sys
 import os
 
 # Android/Kivy graphics configuration.
 # Must be set before importing Kivy/KivyMD.
-os.environ["KIVY_GL_BACKEND"] = "gles2"
+#os.environ["KIVY_GL_BACKEND"] = "gles2"
 
 from kivy.config import Config
 
